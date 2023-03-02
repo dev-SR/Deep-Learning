@@ -8,6 +8,10 @@
 
 - Update `gdown` (in case having problem)
 
+```bash
+!pip install --upgrade --no-cache-dir gdown > /dev/null
+```
+
 ```python
 import gdown
 
