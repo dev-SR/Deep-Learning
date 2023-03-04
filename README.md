@@ -51,3 +51,13 @@ shutil.rmtree('/content/data/info') #deletes a directory and all its contents.
 ```bash
 !unzip "/content/info.zip" -d "/content/data" > /dev/null
 ```
+
+## Misc
+
+- centering image in markdown
+
+```html
+<div align="center">
+<img src="img/file_name" alt="file_name" width="width00px">
+</div>
+```
