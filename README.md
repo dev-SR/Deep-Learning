@@ -61,3 +61,11 @@ shutil.rmtree('/content/data/info') #deletes a directory and all its contents.
 <img src="img/file_name" alt="file_name" width="width00px">
 </div>
 ```
+
+-  Generating `README.md`
+
+
+```bash
+cd ~
+jupyter nbconvert --to markdown file_name --output README.md
+```
