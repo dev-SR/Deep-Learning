@@ -12,7 +12,6 @@
     - [Visualize](#visualize)
   - [Making a confusion matrix for further prediction evaluation](#making-a-confusion-matrix-for-further-prediction-evaluation)
 
-
 ```python
 """
 cd .\03-cnn-basic\
@@ -103,8 +102,7 @@ The DataLoader does what you think it might do. It helps load data into a model.
 
 
 <div align="center">
-<img src="https://raw.githubusercontent.com/dev-SR/Deep-Learning/main/03-cnn-basic/img/batching-fashionmnist.png
-" alt="batch" width="800px">
+<img src="https://raw.githubusercontent.com/dev-SR/Deep-Learning/main/03-cnn-basic/img/batching-fashionmnist.png" alt="batch" width="800px">
 </div>
 
 
