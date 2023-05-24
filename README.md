@@ -5,7 +5,7 @@
 ### vim in colab:
 
 Remap `jj` to <ESC> in Google Colab Vim:
-- press escape to switch normal mode then press : to switch to command mode then type: `:imap jk <Esc>`
+- press `escape` or `CTRL+[` to switch normal mode then press : to switch to command mode then type: `:imap jk <Esc>`
   
 ### `gdown`
 
