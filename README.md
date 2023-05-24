@@ -2,6 +2,11 @@
 
 ## Colab + Google Drive
 
+### vim in colab:
+
+Remap `jj` to <ESC> in Google Colab Vim:
+- press escape to switch normal mode then press : to switch to command mode then type: `:imap jk <Esc>`
+  
 ### `gdown`
 
 - [https://github.com/wkentaro/gdown](https://github.com/wkentaro/gdown)
