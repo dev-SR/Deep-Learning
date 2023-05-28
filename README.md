@@ -69,3 +69,24 @@ shutil.rmtree('/content/data/info') #deletes a directory and all its contents.
 cd ~
 jupyter nbconvert --to markdown file_name --output README.md
 ```
+
+## Tensorflow Helper Functions
+
+Download:
+
+```bash
+!get url
+```
+
+Import:
+
+```python
+from tf_helper_functions import (
+    create_subset_dataset,
+    walk_through_dir,
+    view_random_image,
+    plot_loss_curves_mplt,
+    plot_loss_curves_plotly,
+    create_tensorboard_callback
+)
+```
