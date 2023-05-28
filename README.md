@@ -2,6 +2,11 @@
 
 ## Colab + Google Drive
 
+### vim in colab:
+
+Remap `jj` to <ESC> in Google Colab Vim:
+- press `escape` or `CTRL+[` to switch normal mode then press : to switch to command mode then type: `:imap jk <Esc>`
+  
 ### `gdown`
 
 - [https://github.com/wkentaro/gdown](https://github.com/wkentaro/gdown)
@@ -11,7 +16,16 @@
 ```bash
 !pip install --upgrade --no-cache-dir gdown > /dev/null
 ```
+From Command Line:
 
+```python
+# download with fuzzy extraction of a file ID
+!gdown --fuzzy 'https://drive.google.com/file/d/1Sht13qgc-uJ41LNtYjDiY_veoA5ApUEv/view?usp=share_link'
+# a folder
+!gdown 'https://drive.google.com/drive/folders/15uNXeRBIhVvZJIhL4yTw4IsStMhUaaxl' -O /tmp/folder --folder
+```
+
+From Python:
 ```python
 import gdown
 
