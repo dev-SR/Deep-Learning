@@ -316,8 +316,7 @@ def augment_random_image(target_dir, data_augmentation):
     plt.axis(False)
 
     plt.subplot(1, 2, 2)
-    plt.imshow(tf.squeeze(augmented_img) / 255.)
+    plt.imshow(tf.squeeze(augmented_img) / 255.0)
     plt.title(f"Augmented random image from class: {target_class}")
     plt.axis(False)
-
     plt.show()
