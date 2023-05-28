@@ -17,7 +17,8 @@ import datetime
 
 def create_subset_dataset(dataset_name, percentage, new_path):
     """
-    Creates a subset dataset by randomly selecting a percentage of images from each class in the original dataset.
+    Creates a subset dataset by randomly selecting a percentage of images from the "train" subdirectory
+    in the original dataset.
 
     Args:
         dataset_name (str): The path to the original dataset directory.
@@ -28,60 +29,78 @@ def create_subset_dataset(dataset_name, percentage, new_path):
         None
 
     """
-    print(f"Creating {percentage}% data subset...")
+    print(f"Creating {percentage}% data subset for the 'train' subdirectory...")
     subset_percentage = percentage / 100
 
     # Set the paths for the original and new directories
     dataset_path = Path(dataset_name)
     new_directory = Path(new_path)
 
-    # Test, Train, Val dir....
-    tvt_dirs = [subdir for subdir in dataset_path.iterdir() if subdir.is_dir()]
+    # Keep the "test" and "val" directories unchanged
+    tvt_dirs = [
+        subdir
+        for subdir in dataset_path.iterdir()
+        if subdir.is_dir() and subdir.name != "train"
+    ]
 
     for tvt in tvt_dirs:
         tvt_path = new_directory / tvt.name
         tvt_path.mkdir(parents=True, exist_ok=True)
 
-        class_stats = {}
+        # Copy the subdirectories as they are
         for class_path in tvt.iterdir():
             class_name = class_path.name
-            class_stats[class_name] = list(class_path.glob("*"))
-
-        # Calculate the size of the new dataset based on the subset percentage
-        total_count = sum(len(images) for images in class_stats.values())
-        new_dataset_size = int(total_count * subset_percentage)
-
-        new_dataset = []
-        print(f"{tvt.name}: {total_count}/{new_dataset_size} images selected.")
-
-        for class_name in class_stats.keys():
-            images = class_stats[class_name]
-            num_images = len(images)
-
-            num_selected_images = int(new_dataset_size / len(class_stats))
-            # Randomly select the images from the current class
-            selected_images = random.sample(images, num_selected_images)
-            # Add the selected images to the new dataset
-            new_dataset.extend(selected_images)
-
-            # Copy the selected images to the new directory
-            for image_path in new_dataset:
-                class_name = image_path.parent.name
-                new_image_path = tvt_path / class_name / image_path.name
-                new_image_path.parent.mkdir(parents=True, exist_ok=True)
+            new_class_path = tvt_path / class_name
+            new_class_path.mkdir(parents=True, exist_ok=True)
+            for image_path in class_path.iterdir():
+                new_image_path = new_class_path / image_path.name
                 copyfile(image_path, new_image_path)
 
-        # Calculate and print statistics
-        print("Selected images per class:")
-        for class_name, images in class_stats.items():
-            selected_images = [image for image in images if image in new_dataset]
-            selected_count = len(selected_images)
-            total_count = len(images)
-            print(
-                f"  > Class: {class_name}, Selected: {selected_count}/{total_count} images"
-            )
+    # Create a subset for the "train" subdirectory
+    train_path = dataset_path / "train"
+    train_new_path = new_directory / "train"
+    train_new_path.mkdir(parents=True, exist_ok=True)
 
-        print("Subset dataset created successfully!\n")
+    class_stats = {}
+    for class_path in train_path.iterdir():
+        class_name = class_path.name
+        class_stats[class_name] = list(class_path.glob("*"))
+
+    # Calculate the size of the new dataset based on the subset percentage
+    total_count = sum(len(images) for images in class_stats.values())
+    new_dataset_size = int(total_count * subset_percentage)
+
+    new_dataset = []
+    print(f"train: {total_count}/{new_dataset_size} images selected.")
+
+    for class_name in class_stats.keys():
+        images = class_stats[class_name]
+        num_images = len(images)
+
+        num_selected_images = int(new_dataset_size / len(class_stats))
+        # Randomly select the images from the current class
+        selected_images = random.sample(images, num_selected_images)
+        # Add the selected images to the new dataset
+        new_dataset.extend(selected_images)
+
+        # Copy the selected images to the new directory
+        for image_path in new_dataset:
+            class_name = image_path.parent.name
+            new_image_path = train_new_path / class_name / image_path.name
+            new_image_path.parent.mkdir(parents=True, exist_ok=True)
+            copyfile(image_path, new_image_path)
+
+    # Calculate and print statistics
+    print("Selected images per class:")
+    for class_name, images in class_stats.items():
+        selected_images = [image for image in images if image in new_dataset]
+        selected_count = len(selected_images)
+        total_count = len(images)
+        print(
+            f"  > Class: {class_name}, Selected: {selected_count}/{total_count} images"
+        )
+
+    print("Subset dataset created successfully!\n")
 
 
 def walk_through_dir(dir_path):
