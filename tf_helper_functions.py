@@ -264,7 +264,7 @@ def create_feature_extractor_model(model_url, IMAGE_SHAPE, num_classes):
     model = tf.keras.Sequential(
         [
             feature_extractor_layer,  # use the feature extraction layer as the base
-            tf.karas.layers.Dense(
+            tf.keras.layers.Dense(
                 num_classes, activation="softmax", name="output_layer"
             ),  # create our own output layer
         ]
