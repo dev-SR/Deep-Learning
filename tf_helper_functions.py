@@ -488,6 +488,7 @@ def compare_histories_plotly(original_history, new_history, initial_epochs=5):
             y=total_acc,
             mode="lines",
             name="Training Accuracy",
+            marker=dict(color="blue"),
         ),
         row=1,
         col=1,
@@ -498,17 +499,19 @@ def compare_histories_plotly(original_history, new_history, initial_epochs=5):
             y=total_val_acc,
             mode="lines",
             name="Validation Accuracy",
+            marker=dict(color="red"),
         ),
         row=1,
         col=1,
     )
-    fig.add_shape(
-        type="line",
-        x0=initial_epochs - 1,
-        x1=initial_epochs - 1,
-        y0=min(total_acc),
-        y1=max(total_acc),
-        line=dict(color="black", width=1),
+    fig.add_trace(
+        go.Scatter(
+            x=[initial_epochs - 1, initial_epochs - 1],
+            y=[min(total_acc), max(total_acc)],
+            mode="lines",
+            name="Fine-tune starting point",
+            marker=dict(color="black"),
+        ),
         row=1,
         col=1,
     )
@@ -521,6 +524,7 @@ def compare_histories_plotly(original_history, new_history, initial_epochs=5):
             y=total_loss,
             mode="lines",
             name="Training Loss",
+            marker=dict(color="blue"),
         ),
         row=2,
         col=1,
@@ -531,17 +535,19 @@ def compare_histories_plotly(original_history, new_history, initial_epochs=5):
             y=total_val_loss,
             mode="lines",
             name="Validation Loss",
+            marker=dict(color="red"),
         ),
         row=2,
         col=1,
     )
-    fig.add_shape(
-        type="line",
-        x0=initial_epochs - 1,
-        x1=initial_epochs - 1,
-        y0=min(total_loss),
-        y1=max(total_loss),
-        line=dict(color="black", width=1),
+    fig.add_trace(
+        go.Scatter(
+            x=[initial_epochs - 1, initial_epochs - 1],
+            y=[min(total_loss), max(total_loss)],
+            mode="lines",
+            name="Fine-tune starting point",
+            marker=dict(color="black"),
+        ),
         row=2,
         col=1,
     )
