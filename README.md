@@ -104,5 +104,7 @@ from tf_helper_functions import (
     plot_loss_curves_plotly,
     create_tensorboard_callback,
     create_feature_extractor_model,
+    compare_histories_plotly,
+    compare_histories_mplt
 )
 ```

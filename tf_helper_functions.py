@@ -194,7 +194,7 @@ def plot_loss_curves_plotly(history):
     test_loss = history.history["val_loss"]
     accuracy = history.history["accuracy"]
     test_accuracy = history.history["val_accuracy"]
-    epochs = np.arange(len(loss))
+    epochs = list(range(len(loss)))
 
     fig = make_subplots(rows=1, cols=2, subplot_titles=("Loss", "Accuracy"))
 
@@ -253,6 +253,17 @@ def plot_loss_curves_plotly(history):
 
 
 def create_tensorboard_callback(dir_name, experiment_name, timezone="Asia/Dhaka"):
+    """
+    Creates a TensorBoard callback for logging training metrics during model training.
+
+    Parameters:
+    dir_name (str): Directory name where the TensorBoard logs will be saved.
+    experiment_name (str): Name of the experiment or model for organizing the logs.
+    timezone (str): Timezone for log directory naming. Default is "Asia/Dhaka".
+
+    Returns:
+    tf.keras.callbacks.TensorBoard: TensorBoard callback for logging training metrics.
+    """
     # Set the time zone based on the provided argument
     target_time_zone = pytz.timezone(timezone)
 
@@ -305,6 +316,17 @@ def create_feature_extractor_model(model_url, IMAGE_SHAPE, num_classes):
 
 
 def augment_random_image(target_dir, data_augmentation):
+    """
+    Reads a random image from a randomly chosen class in the target directory,
+    applies data augmentation to the image, and plots the original and augmented images side by side.
+
+    Parameters:
+    target_dir (str): Path to the directory containing the target images.
+    data_augmentation (tf.keras.Sequential): Data augmentation model to apply to the images.
+
+    Returns:
+    None
+    """
     # Get a random class from the target directory
     target_class = random.choice(os.listdir(target_dir))
 
@@ -331,4 +353,157 @@ def augment_random_image(target_dir, data_augmentation):
     plt.imshow(tf.squeeze(augmented_img) / 255.0)
     plt.title(f"Augmented random image from class: {target_class}")
     plt.axis(False)
+    plt.show()
+
+
+def compare_histories_plotly(original_history, new_history, initial_epochs=5):
+    """
+    Compares two model history objects and plots the training and validation accuracy and loss using Plotly.
+
+    Parameters:
+    original_history (keras.callbacks.History): History object of the original model.
+    new_history (keras.callbacks.History): History object of the new model.
+    initial_epochs (int): Number of initial epochs before fine-tuning. Default is 5.
+
+    Returns:
+    None
+    """
+    # Get original history measurements
+    acc = original_history.history["accuracy"]
+    loss = original_history.history["loss"]
+    val_acc = original_history.history["val_accuracy"]
+    val_loss = original_history.history["val_loss"]
+
+    # Combine original history with new history
+    total_acc = acc + new_history.history["accuracy"]
+    total_loss = loss + new_history.history["loss"]
+    total_val_acc = val_acc + new_history.history["val_accuracy"]
+    total_val_loss = val_loss + new_history.history["val_loss"]
+
+    # Create subplots
+    fig = make_subplots(
+        rows=2,
+        cols=1,
+        subplot_titles=(
+            "Training and Validation Accuracy",
+            "Training and Validation Loss",
+        ),
+    )
+
+    # Add traces to the first subplot (Training Accuracy and Validation Accuracy)
+    fig.add_trace(
+        go.Scatter(
+            x=list(range(len(total_acc))),
+            y=total_acc,
+            mode="lines",
+            name="Training Accuracy",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=list(range(len(total_val_acc))),
+            y=total_val_acc,
+            mode="lines",
+            name="Validation Accuracy",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_shape(
+        type="line",
+        x0=initial_epochs - 1,
+        x1=initial_epochs - 1,
+        y0=min(total_acc),
+        y1=max(total_acc),
+        line=dict(color="black", width=1),
+        row=1,
+        col=1,
+    )
+    fig.update_yaxes(title_text="Accuracy", row=1, col=1)
+
+    # Add traces to the second subplot (Training Loss and Validation Loss)
+    fig.add_trace(
+        go.Scatter(
+            x=list(range(len(total_loss))),
+            y=total_loss,
+            mode="lines",
+            name="Training Loss",
+        ),
+        row=2,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=list(range(len(total_val_loss))),
+            y=total_val_loss,
+            mode="lines",
+            name="Validation Loss",
+        ),
+        row=2,
+        col=1,
+    )
+    fig.add_shape(
+        type="line",
+        x0=initial_epochs - 1,
+        x1=initial_epochs - 1,
+        y0=min(total_loss),
+        y1=max(total_loss),
+        line=dict(color="black", width=1),
+        row=2,
+        col=1,
+    )
+    fig.update_yaxes(title_text="Loss", row=2, col=1)
+
+    # Update layout and display the figure
+    fig.update_layout(
+        height=1000,
+        width=1000,
+        showlegend=True,
+        title="Comparison of Training and Validation Metrics",
+    )
+    fig.show()
+
+def compare_histories_mplt(original_history, new_history, initial_epochs=5):
+    """
+    Compares two model history objects.
+    """
+    # Get original history measurements
+    acc = original_history.history["accuracy"]
+    loss = original_history.history["loss"]
+
+    print(len(acc))
+
+    val_acc = original_history.history["val_accuracy"]
+    val_loss = original_history.history["val_loss"]
+
+    # Combine original history with new history
+    total_acc = acc + new_history.history["accuracy"]
+    total_loss = loss + new_history.history["loss"]
+
+    total_val_acc = val_acc + new_history.history["val_accuracy"]
+    total_val_loss = val_loss + new_history.history["val_loss"]
+
+    print(len(total_acc))
+    print(total_acc)
+
+    # Make plots
+    plt.figure(figsize=(8, 8))
+    plt.subplot(2, 1, 1)
+    plt.plot(total_acc, label='Training Accuracy')
+    plt.plot(total_val_acc, label='Validation Accuracy')
+    plt.plot([initial_epochs-1, initial_epochs-1],
+              plt.ylim(), label='Start Fine Tuning') # reshift plot around epochs
+    plt.legend(loc='lower right')
+    plt.title('Training and Validation Accuracy')
+
+    plt.subplot(2, 1, 2)
+    plt.plot(total_loss, label='Training Loss')
+    plt.plot(total_val_loss, label='Validation Loss')
+    plt.plot([initial_epochs-1, initial_epochs-1],
+              plt.ylim(), label='Start Fine Tuning') # reshift plot around epochs
+    plt.legend(loc='upper right')
+    plt.title('Training and Validation Loss')
+    plt.xlabel('epoch')
     plt.show()
