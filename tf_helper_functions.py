@@ -13,6 +13,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
 import datetime
+import pytz
 
 
 def create_subset_dataset(dataset_name, percentage, new_path):
@@ -251,9 +252,20 @@ def plot_loss_curves_plotly(history):
 # Create tensorboard callback (functionized because need to create a new one for each model)
 
 
-def create_tensorboard_callback(dir_name, experiment_name):
-    current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    log_dir = f"{dir_name}/{experiment_name}/{current_time}"
+def create_tensorboard_callback(dir_name, experiment_name, timezone="Asia/Dhaka"):
+    # Set the time zone based on the provided argument
+    target_time_zone = pytz.timezone(timezone)
+
+    # Get the current time in the system's local time zone
+    current_time = datetime.datetime.now()
+
+    # Convert the current time to the target time zone
+    target_current_time = current_time.astimezone(target_time_zone)
+
+    # Format the current time for the log directory name
+    log_time = target_current_time.strftime("%Y-%m-%d_%H-%M-%S")
+
+    log_dir = f"{dir_name}/{experiment_name}/{log_time}"
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir)
     print(f"Saving TensorBoard log files to: {log_dir}")
     return tensorboard_callback
