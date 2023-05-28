@@ -96,8 +96,9 @@ Import:
 
 ```python
 from tf_helper_functions import (
-    create_subset_dataset,
+    split_dataset_train_test,
     walk_through_dir,
+    create_subset_dataset,
     view_random_image,
     augment_random_image,
     plot_loss_curves_mplt,
@@ -105,6 +106,6 @@ from tf_helper_functions import (
     create_tensorboard_callback,
     create_feature_extractor_model,
     compare_histories_plotly,
-    compare_histories_mplt
+    compare_histories_mplt,
 )
 ```

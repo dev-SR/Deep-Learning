@@ -6,14 +6,92 @@ import tensorflow_hub as hub
 import os
 import random
 from pathlib import Path
+import shutil
 from shutil import copyfile
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import numpy as np
 import datetime
 import pytz
+from sklearn.model_selection import train_test_split
+from tqdm.notebook import tqdm
+
+
+def split_dataset_train_test(directory, train_dir, valid_dir, test_size=0.3, random_state=42):
+    """
+    Split a dataset into train and validation sets and copy the files to the respective directories.
+
+    Args:
+        directory (str): Path to the directory containing the image dataset.
+        train_dir (str): Path to the directory where the train set will be copied.
+        valid_dir (str): Path to the directory where the validation set will be copied.
+        test_size (float): The proportion of the dataset to include in the validation set (default: 0.3).
+        random_state (int): Random seed for reproducibility (default: 42).
+
+    Example of file structure of input:
+
+    input <- top level folder
+    └───pizza
+    │   │   1008104.jpg
+    │   │   1638227.jpg
+    │   │   ...
+    └───steak
+        │   1000205.jpg
+        │   1647351.jpg
+        │   ...
+
+    Example of file structure of output:
+    output <- top level folder
+    └───train <- training images
+    │   └───pizza
+    │   │   │   1008104.jpg
+    │   │   │   1638227.jpg
+    │   │   │   ...
+    │   └───steak
+    │       │   1000205.jpg
+    │       │   1647351.jpg
+    │       │   ...
+    │
+    └───test <- testing images
+    │   └───pizza
+    │   │   │   1001116.jpg
+    │   │   │   1507019.jpg
+    │   │   │   ...
+    │   └───steak
+    │       │   100274.jpg
+    │       │   1653815.jpg
+    │       │   ...
+    """
+
+    # Create train and valid directories if they don't exist
+    Path(train_dir).mkdir(parents=True, exist_ok=True)
+    Path(valid_dir).mkdir(parents=True, exist_ok=True)
+
+    # Get all the image files in the directory
+    root = Path(directory)
+    all_files = list(root.glob("*/*"))
+
+    # Split the files into train and valid sets
+    train_files, valid_files = train_test_split(
+        all_files, test_size=test_size, random_state=random_state
+    )
+
+    # Copy train files to train directory
+    for file in tqdm(train_files, desc="Copying train files"):
+        dest_path = str(file).replace(directory, train_dir)
+        Path(dest_path).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(str(file), dest_path)
+
+    # Copy valid files to valid directory
+    for file in tqdm(valid_files, desc="Copying valid files"):
+        dest_path = str(file).replace(directory, valid_dir)
+        Path(dest_path).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(str(file), dest_path)
+
+    # Print the number of files in the train and valid sets
+    print("Number of train files:", len(train_files))
+    print("Number of valid files:", len(valid_files))
 
 
 def create_subset_dataset(dataset_name, percentage, new_path):
@@ -465,6 +543,7 @@ def compare_histories_plotly(original_history, new_history, initial_epochs=5):
     )
     fig.show()
 
+
 def compare_histories_mplt(original_history, new_history, initial_epochs=5):
     """
     Compares two model history objects.
@@ -491,19 +570,21 @@ def compare_histories_mplt(original_history, new_history, initial_epochs=5):
     # Make plots
     plt.figure(figsize=(8, 8))
     plt.subplot(2, 1, 1)
-    plt.plot(total_acc, label='Training Accuracy')
-    plt.plot(total_val_acc, label='Validation Accuracy')
-    plt.plot([initial_epochs-1, initial_epochs-1],
-              plt.ylim(), label='Start Fine Tuning') # reshift plot around epochs
-    plt.legend(loc='lower right')
-    plt.title('Training and Validation Accuracy')
+    plt.plot(total_acc, label="Training Accuracy")
+    plt.plot(total_val_acc, label="Validation Accuracy")
+    plt.plot(
+        [initial_epochs - 1, initial_epochs - 1], plt.ylim(), label="Start Fine Tuning"
+    )  # reshift plot around epochs
+    plt.legend(loc="lower right")
+    plt.title("Training and Validation Accuracy")
 
     plt.subplot(2, 1, 2)
-    plt.plot(total_loss, label='Training Loss')
-    plt.plot(total_val_loss, label='Validation Loss')
-    plt.plot([initial_epochs-1, initial_epochs-1],
-              plt.ylim(), label='Start Fine Tuning') # reshift plot around epochs
-    plt.legend(loc='upper right')
-    plt.title('Training and Validation Loss')
-    plt.xlabel('epoch')
+    plt.plot(total_loss, label="Training Loss")
+    plt.plot(total_val_loss, label="Validation Loss")
+    plt.plot(
+        [initial_epochs - 1, initial_epochs - 1], plt.ylim(), label="Start Fine Tuning"
+    )  # reshift plot around epochs
+    plt.legend(loc="upper right")
+    plt.title("Training and Validation Loss")
+    plt.xlabel("epoch")
     plt.show()
