@@ -99,9 +99,10 @@ from tf_helper_functions import (
     create_subset_dataset,
     walk_through_dir,
     view_random_image,
+    augment_random_image,
     plot_loss_curves_mplt,
     plot_loss_curves_plotly,
     create_tensorboard_callback,
-    create_feature_extractor_model
+    create_feature_extractor_model,
 )
 ```

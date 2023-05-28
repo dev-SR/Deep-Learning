@@ -290,3 +290,34 @@ def create_feature_extractor_model(model_url, IMAGE_SHAPE, num_classes):
     )
 
     return model
+
+
+def augment_random_image(target_dir, data_augmentation):
+    # Get a random class from the target directory
+    target_class = random.choice(os.listdir(target_dir))
+
+    # Get a random image from the chosen class
+    class_dir = os.path.join(target_dir, target_class)
+    random_image = random.choice(os.listdir(class_dir))
+    random_image_path = os.path.join(class_dir, random_image)
+
+    # Read the random image
+    img = mpimg.imread(random_image_path)
+
+    # Augment the image
+    augmented_img = data_augmentation(tf.expand_dims(img, axis=0))
+
+    # Plot the original and augmented images
+    plt.figure(figsize=(10, 5))
+
+    plt.subplot(1, 2, 1)
+    plt.imshow(img)
+    plt.title(f"Original random image from class: {target_class}")
+    plt.axis(False)
+
+    plt.subplot(1, 2, 2)
+    plt.imshow(tf.squeeze(augmented_img) / 255.)
+    plt.title(f"Augmented random image from class: {target_class}")
+    plt.axis(False)
+
+    plt.show()
