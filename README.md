@@ -6,7 +6,7 @@
 
 Remap `jj` to <ESC> in Google Colab Vim:
 - press `escape` or `CTRL+[` to switch normal mode then press : to switch to command mode then type: `:imap jk <Esc>`
-  
+
 ### `gdown`
 
 - [https://github.com/wkentaro/gdown](https://github.com/wkentaro/gdown)
@@ -89,7 +89,7 @@ jupyter nbconvert --to markdown file_name --output README.md
 Download:
 
 ```bash
-!get url
+!wget https://raw.githubusercontent.com/dev-SR/Deep-Learning/main/tf_helper_functions.py
 ```
 
 Import:
@@ -101,6 +101,7 @@ from tf_helper_functions import (
     view_random_image,
     plot_loss_curves_mplt,
     plot_loss_curves_plotly,
-    create_tensorboard_callback
+    create_tensorboard_callback,
+    create_feature_extractor_model
 )
 ```
