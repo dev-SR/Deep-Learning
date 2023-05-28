@@ -18,7 +18,9 @@ from sklearn.model_selection import train_test_split
 from tqdm.notebook import tqdm
 
 
-def split_dataset_train_test(directory, train_dir, valid_dir, test_size=0.3, random_state=42):
+def split_dataset_train_test(
+    directory, train_dir, valid_dir, test_size=0.3, random_state=42
+):
     """
     Split a dataset into train and validation sets and copy the files to the respective directories.
 
@@ -201,22 +203,33 @@ def walk_through_dir(dir_path):
 
 
 # View an image
-def view_random_image(target_dir, target_class):
-    # Setup target directory (we'll view images from here)
-    target_folder = Path(target_dir) / target_class
+def view_random_image(root_path):
+    """
+    root_path: root folder path
+    """
+    # Get all image file paths in the directory
+    image_paths = list(Path(root_path).rglob("*.jpeg"))
 
-    # Get a random image path
-    random_image = random.sample(os.listdir(target_folder), 1)
+    if len(image_paths) == 0:
+        print("No image files found in the specified directory.")
+        return
 
+    # Select a random image path
+    random_image_path = random.choice(image_paths)
     # Read in the image and plot it using matplotlib
-    img = mpimg.imread(target_folder / random_image[0])
+    img = mpimg.imread(random_image_path)
     plt.imshow(img)
-    plt.title(target_class)
+    plt.title(str(random_image_path.parent.name))
     plt.axis("off")
 
-    print(f"Image shape: {img.shape}")  # show the shape of the image
+    # Get the image size
+    height, width, channels = img.shape
 
-    return img
+    # Print the size statistics
+    print("Image Path:", random_image_path)
+    print("Width:", width)
+    print("Height:", height)
+    print("Channels:", channels)
 
 
 # Plot loss curves of a model with matplotlib
