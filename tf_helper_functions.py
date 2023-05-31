@@ -203,15 +203,16 @@ def walk_through_dir(dir_path):
 
 
 # View an image
-def view_random_image(root_path):
+def view_random_image(root_path, file_extension):
     """
     root_path: root folder path
+    file_extension: extension of the image files to search for (e.g., "jpg", "png")
     """
-    # Get all image file paths in the directory
-    image_paths = list(Path(root_path).rglob("*.jpeg"))
+    # Get all image file paths with the specified extension in the directory
+    image_paths = list(Path(root_path).rglob(f"*.{file_extension}"))
 
     if len(image_paths) == 0:
-        print("No image files found in the specified directory.")
+        print("No image files found with the specified extension in the specified directory.")
         return
 
     # Select a random image path
@@ -230,6 +231,7 @@ def view_random_image(root_path):
     print("Width:", width)
     print("Height:", height)
     print("Channels:", channels)
+
 
 
 # Plot loss curves of a model with matplotlib
