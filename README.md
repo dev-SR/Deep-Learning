@@ -96,6 +96,7 @@ Import:
 
 ```python
 from tf_helper_functions import (
+    delete_dir,
     split_dataset_train_test,
     walk_through_dir,
     create_subset_dataset,
