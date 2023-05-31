@@ -96,13 +96,13 @@ def split_dataset_train_test(
     print("Number of valid files:", len(valid_files))
 
 
-def create_subset_dataset(dataset_name, percentage, new_path):
+def create_subset_dataset(dataset_path, percentage, new_path):
     """
     Creates a subset dataset by randomly selecting a percentage of images from the "train" subdirectory
     in the original dataset.
 
     Args:
-        dataset_name (str): The path to the original dataset directory.
+        dataset_path (str): The path to the original dataset directory.
         percentage (float): The percentage of images to include in the subset (between 0 and 100).
         new_path (str): The path to the directory where the subset dataset will be created.
 
@@ -114,7 +114,7 @@ def create_subset_dataset(dataset_name, percentage, new_path):
     subset_percentage = percentage / 100
 
     # Set the paths for the original and new directories
-    dataset_path = Path(dataset_name)
+    dataset_path = Path(dataset_path)
     new_directory = Path(new_path)
 
     # Keep the "test" and "val" directories unchanged
