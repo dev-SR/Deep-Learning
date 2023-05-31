@@ -17,6 +17,8 @@ import pytz
 from sklearn.model_selection import train_test_split
 from tqdm.notebook import tqdm
 
+def delete_dir(dir_name):
+    shutil.rmtree(f'/content/{dir_name}') #deletes a directory and all its contents.
 
 def split_dataset_train_test(
     directory, train_dir, valid_dir, test_size=0.3, random_state=42
