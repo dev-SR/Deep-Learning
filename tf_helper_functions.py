@@ -1,6 +1,7 @@
 # helpers
 import tensorflow as tf
 import tensorflow_hub as hub
+import numpy as np
 
 
 import os
@@ -236,16 +237,36 @@ def view_random_image(root_path, file_extension):
 
 
 
-# Plot loss curves of a model with matplotlib
-def plot_loss_curves_mplt(history):
-    """Plots training curves of a results dictionary.
+# Plot loss curves of a model with matplotlib with smothing effect
+def smooth_curve(points, factor=0.8):
+    """Smooths a curve using exponential moving averages.
 
     Args:
-        history (dict): dictionary containing training history, e.g.
+        points (list): List of values representing the curve.
+        factor (float): Smoothing factor (default: 0.8).
+
+    Returns:
+        numpy.ndarray: Smoothed curve.
+    """
+    smoothed_points = []
+    for point in points:
+        if smoothed_points:
+            previous = smoothed_points[-1]
+            smoothed_points.append(previous * factor + point * (1 - factor))
+        else:
+            smoothed_points.append(point)
+    return np.array(smoothed_points)
+
+def plot_loss_curves_mplt(history, smoothing_factor=0.8):
+    """Plots training curves of a results dictionary with smoothed curves.
+
+    Args:
+        history (dict): Dictionary containing training history, e.g.
             {"loss": [...],
              "val_loss": [...],
              "accuracy": [...],
-             "val_accuracy": [...]}
+             "val_accuracy": [...]}.
+        smoothing_factor (float): Smoothing factor for curves (default: 0.7).
     """
     loss = history.history["loss"]
     test_loss = history.history["val_loss"]
@@ -259,51 +280,48 @@ def plot_loss_curves_mplt(history):
 
     # Plot loss
     plt.subplot(1, 2, 1)
-    plt.plot(epochs, loss, label="train_loss")
-    plt.plot(epochs, test_loss, label="test_loss")
+    plt.plot(epochs, smooth_curve(loss, smoothing_factor), label="train_loss")
+    plt.plot(epochs, smooth_curve(test_loss, smoothing_factor), label="test_loss")
     plt.title("Loss")
     plt.xlabel("Epochs")
     plt.legend()
 
     # Plot accuracy
     plt.subplot(1, 2, 2)
-    plt.plot(epochs, accuracy, label="train_accuracy")
-    plt.plot(epochs, test_accuracy, label="test_accuracy")
+    plt.plot(epochs, smooth_curve(accuracy, smoothing_factor), label="train_accuracy")
+    plt.plot(epochs, smooth_curve(test_accuracy, smoothing_factor), label="test_accuracy")
     plt.title("Accuracy")
     plt.xlabel("Epochs")
     plt.legend()
+    plt.show()
 
 
-# Plot loss curves of a model using plotly.py
-def plot_loss_curves_plotly(history):
-    """Plots training curves of a results dictionary.
-
-    Args:
-        history (dict): dictionary containing training history, e.g.
-            {"loss": [...],
-             "val_loss": [...],
-             "accuracy": [...],
-             "val_accuracy": [...]}
-    """
+# Plot loss curves of a model using plotly.py with smoothing effect
+def plot_loss_curves_plotly(history, smoothing_factor=0.8):
     loss = history.history["loss"]
     test_loss = history.history["val_loss"]
     accuracy = history.history["accuracy"]
     test_accuracy = history.history["val_accuracy"]
     epochs = list(range(len(loss)))
 
+    smoothed_loss = smooth_curve(loss, smoothing_factor)
+    smoothed_test_loss = smooth_curve(test_loss, smoothing_factor)
+    smoothed_accuracy = smooth_curve(accuracy, smoothing_factor)
+    smoothed_test_accuracy = smooth_curve(test_accuracy, smoothing_factor)
+
     fig = make_subplots(rows=1, cols=2, subplot_titles=("Loss", "Accuracy"))
 
     # Plot loss
     fig.add_trace(
         go.Scatter(
-            x=epochs, y=loss, mode="lines", name="train_loss", line=dict(color="blue")
+            x=epochs, y=smoothed_loss, mode="lines", name="train_loss", line=dict(color="blue")
         ),
         row=1,
         col=1,
     )
     fig.add_trace(
         go.Scatter(
-            x=epochs, y=test_loss, mode="lines", name="val_loss", line=dict(color="red")
+            x=epochs, y=smoothed_test_loss, mode="lines", name="val_loss", line=dict(color="red")
         ),
         row=1,
         col=1,
@@ -313,7 +331,7 @@ def plot_loss_curves_plotly(history):
     fig.add_trace(
         go.Scatter(
             x=epochs,
-            y=accuracy,
+            y=smoothed_accuracy,
             mode="lines",
             name="train_accuracy",
             line=dict(color="blue"),
@@ -324,7 +342,7 @@ def plot_loss_curves_plotly(history):
     fig.add_trace(
         go.Scatter(
             x=epochs,
-            y=test_accuracy,
+            y=smoothed_test_accuracy,
             mode="lines",
             name="val_accuracy",
             line=dict(color="red"),
