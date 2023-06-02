@@ -2,6 +2,7 @@
 import tensorflow as tf
 import tensorflow_hub as hub
 import numpy as np
+from tensorflow.keras.callbacks import EarlyStopping,  ModelCheckpoint, ReduceLROnPlateau
 
 
 import os
@@ -629,3 +630,33 @@ def compare_histories_mplt(original_history, new_history, initial_epochs=5):
     plt.title("Training and Validation Loss")
     plt.xlabel("epoch")
     plt.show()
+
+    
+def get_callbacks():
+    # Stop training when a monitored metric has stopped improving.
+    early_stop = EarlyStopping(monitor='val_loss', 
+                               patience=5, #Number of epochs with no improvement after which training will be stopped.
+                               restore_best_weights=True)
+
+    # Reduce learning rate when a metric has stopped improving.
+    reduce_lr = ReduceLROnPlateau(monitor='val_loss', 
+                                  factor=0.1,
+                                  patience=3, #Number of epochs with no improvement after which learning rate will be reduced.
+                                  verbose=1)
+
+    checkpoint = ModelCheckpoint(filepath='model_weights.h5',
+                                 monitor='val_loss',
+                                 save_best_only=True,
+                                 save_weights_only=True,
+                                 mode='min',
+                                 verbose=1)
+    # Add other performance-enhancing callbacks if desired
+    # For example:
+    # tensorboard = TensorBoard(log_dir='logs')
+
+    callbacks = [early_stop, checkpoint, reduce_lr]
+
+    return callbacks
+
+
+    
