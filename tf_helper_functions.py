@@ -23,81 +23,74 @@ def delete_dir(dir_name):
     shutil.rmtree(f'/content/{dir_name}') #deletes a directory and all its contents.
 
 def split_dataset_train_test(
-    directory, train_dir, valid_dir, test_size=0.3, random_state=42
+    src_directory, dest_directory, split_ratio=0.2, random_state=42, only_train_n_test=True
 ):
     """
-    Split a dataset into train and validation sets and copy the files to the respective directories.
+    Split a dataset into train, test, and validation sets and copy the files to the respective directories.
 
     Args:
-        directory (str): Path to the directory containing the image dataset.
-        train_dir (str): Path to the directory where the train set will be copied.
-        valid_dir (str): Path to the directory where the validation set will be copied.
-        test_size (float): The proportion of the dataset to include in the validation set (default: 0.3).
+        src_directory (str): Path to the directory containing the image dataset.
+        dest_directory (str): Path to the directory where the train, test, and validation sets will be copied.
+        split_ratio (float): The proportion of the dataset to include in the test and validation sets (default: 0.2).
         random_state (int): Random seed for reproducibility (default: 42).
-
-    Example of file structure of input:
-
-    input <- top level folder
-    └───pizza
-    │   │   1008104.jpg
-    │   │   1638227.jpg
-    │   │   ...
-    └───steak
-        │   1000205.jpg
-        │   1647351.jpg
-        │   ...
-
-    Example of file structure of output:
-    output <- top level folder
-    └───train <- training images
-    │   └───pizza
-    │   │   │   1008104.jpg
-    │   │   │   1638227.jpg
-    │   │   │   ...
-    │   └───steak
-    │       │   1000205.jpg
-    │       │   1647351.jpg
-    │       │   ...
-    │
-    └───test <- testing images
-    │   └───pizza
-    │   │   │   1001116.jpg
-    │   │   │   1507019.jpg
-    │   │   │   ...
-    │   └───steak
-    │       │   100274.jpg
-    │       │   1653815.jpg
-    │       │   ...
+        only_train_n_test (bool): Whether to generate only train and test sets or also include a validation set (default: True).
     """
 
-    # Create train and valid directories if they don't exist
-    Path(train_dir).mkdir(parents=True, exist_ok=True)
-    Path(valid_dir).mkdir(parents=True, exist_ok=True)
+    # Create train and test directories
+    train_dir = Path(dest_directory) / "train"
+    test_dir = Path(dest_directory) / "test"
+    train_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
 
-    # Get all the image files in the directory
-    root = Path(directory)
-    all_files = list(root.glob("*/*"))
+    if not only_train_n_test:
+        # Create validation directory
+        valid_dir = Path(dest_directory) / "valid"
+        valid_dir.mkdir(parents=True, exist_ok=True)
 
-    # Split the files into train and valid sets
-    train_files, valid_files = train_test_split(
-        all_files, test_size=test_size, random_state=random_state
+    # Get all the image files in the source directory and their corresponding labels
+    root = Path(src_directory)
+    files = list(root.glob("*/*"))
+    labels = [str(file.parent).split('/')[-1] for file in files]
+
+    # Split the files and labels into train, test/validation sets
+    train_files, test_valid_files, train_labels, test_valid_labels = train_test_split(
+        files, labels, test_size=split_ratio, random_state=random_state, stratify=labels
     )
+
+    if not only_train_n_test:
+        # Split the test_valid_files and labels into test and validation sets
+        test_files, valid_files, test_labels, valid_labels = train_test_split(
+            test_valid_files, test_valid_labels, test_size=0.5, random_state=random_state, stratify=test_valid_labels
+        )
+
+        # Copy validation files to validation directory
+        for file in tqdm(valid_files, desc="Copying validation files"):
+            dest_path = str(file).replace(src_directory, str(valid_dir))
+            Path(dest_path).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(file, dest_path)
+
+        # Print the number of files in the validation set
+        print("Number of validation files:", len(valid_files))
+
+    else:
+        test_files = test_valid_files
+        test_labels = test_valid_labels
 
     # Copy train files to train directory
     for file in tqdm(train_files, desc="Copying train files"):
-        dest_path = str(file).replace(directory, train_dir)
+        dest_path = str(file).replace(src_directory, str(train_dir))
         Path(dest_path).parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(str(file), dest_path)
+        shutil.copy(file, dest_path)
 
-    # Copy valid files to valid directory
-    for file in tqdm(valid_files, desc="Copying valid files"):
-        dest_path = str(file).replace(directory, valid_dir)
+    # Copy test files to test directory
+    for file in tqdm(test_files, desc="Copying test files"):
+        dest_path = str(file).replace(src_directory, str(test_dir))
         Path(dest_path).parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(str(file), dest_path)
+        shutil.copy(file, dest_path)
 
-    # Print the number of files in the train and valid sets
+    # Print the number of files in the train and test sets
     print("Number of train files:", len(train_files))
-    print("Number of valid files:", len(valid_files))
+    print("Number of test files:", len(test_files))
 
 
 def create_subset_dataset(dataset_path, percentage, new_path):
