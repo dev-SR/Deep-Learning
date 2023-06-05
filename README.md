@@ -2,6 +2,17 @@
 
 ## Colab + Google Drive
 
+## logless installation
+
+```py
+%%capture
+!pip install x
+```
+Or
+```py
+!pip install x > /dev/null
+```
+
 ### vim in colab:
 
 Remap `jj` to <ESC> in Google Colab Vim:
