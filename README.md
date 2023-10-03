@@ -77,8 +77,6 @@ shutil.rmtree('/content/data/info') #deletes a directory and all its contents.
 !unzip "/content/info.zip" -d "/content/data" > /dev/null
 ```
 
-## Misc
-
 - centering image in markdown
 
 ```html
@@ -89,10 +87,25 @@ shutil.rmtree('/content/data/info') #deletes a directory and all its contents.
 
 -  Generating `README.md`
 
-
 ```bash
 cd ~
 jupyter nbconvert --to markdown file_name --output README.md
+```
+
+## Mounting Gdrive in Colab
+
+- Give permission
+  
+```python
+from google.colab import drive
+drive.mount('/content/drive')
+```
+
+- Usage
+
+```python
+output_path = f"/content/drive/MyDrive/result.csv"
+results_df.to_csv(output_path, index=False)
 ```
 
 ## Tensorflow Helper Functions
