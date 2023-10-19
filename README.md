@@ -33,7 +33,7 @@ From Command Line:
 # download with fuzzy extraction of a file ID
 !gdown --fuzzy 'https://drive.google.com/file/d/1Sht13qgc-uJ41LNtYjDiY_veoA5ApUEv/view?usp=share_link'
 # a folder
-!gdown 'https://drive.google.com/drive/folders/15uNXeRBIhVvZJIhL4yTw4IsStMhUaaxl' -O /tmp/folder --folder
+!gdown https://drive.google.com/drive/folders/1bsaNHhwhfD8t1d2dlSItS_32Phjlv4bu?usp=share_link -O /content/results --folder
 ```
 
 From Python:
