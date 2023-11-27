@@ -1,6 +1,17 @@
 # Note
 
-## Colab + Google Drive
+## Convert Notebook to Markdown doc
+
+```bash
+cd .\01-pytorch-basics
+jupyter nbconvert torch.ipynb --to markdown --output README.md
+```
+
+- **Issues**:  `nbconvert` failing to convert notebook to markdown:
+
+```bash
+pip install "nbconvert<6"
+```
 
 ## logless installation
 

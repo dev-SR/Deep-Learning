@@ -1,7 +1,24 @@
-<a href="https://colab.research.google.com/github/dev-SR/Deep-Learning/blob/main/01-pytorch-basics/torch.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
-
-
 # Pytorch
+
+- [Pytorch](#pytorch)
+  - [Creating tensors in PyTorch](#creating-tensors-in-pytorch)
+  - [PyTorch to Numpy/Python](#pytorch-to-numpypython)
+  - [Manipulating the data type and shape](#manipulating-the-data-type-and-shape)
+  - [Tensor Operation](#tensor-operation)
+    - [Basic Operations](#basic-operations)
+    - [🚀Matrix multiplication (is all you need)](#matrix-multiplication-is-all-you-need)
+  - [Split, stack, and concatenate tensors](#split-stack-and-concatenate-tensors)
+  - [Finding the min, max, mean, sum, etc (aggregation)¶](#finding-the-min-max-mean-sum-etc-aggregation)
+    - [Positional min/max](#positional-minmax)
+  - [🔥AutoGrad](#autograd)
+  - [🔥Running tensors on GPUs](#running-tensors-on-gpus)
+  - [🔥Building input pipelines in PyTorch](#building-input-pipelines-in-pytorch)
+    - [Creating a PyTorch DataLoader from existing tensors](#creating-a-pytorch-dataloader-from-existing-tensors)
+    - [Combining two tensors into a joint dataset](#combining-two-tensors-into-a-joint-dataset)
+    - [Shuffle, batch, and repeat](#shuffle-batch-and-repeat)
+    - [Creating a dataset from files on your local storage disk](#creating-a-dataset-from-files-on-your-local-storage-disk)
+
+<a href="https://colab.research.google.com/github/dev-SR/Deep-Learning/blob/main/01-pytorch-basics/torch.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
 
 
 **Resources**:
