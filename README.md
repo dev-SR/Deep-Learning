@@ -95,7 +95,7 @@ jupyter nbconvert --to markdown file_name --output README.md
 ## Mounting Gdrive in Colab
 
 - Give permission
-  
+
 ```python
 from google.colab import drive
 drive.mount('/content/drive')
