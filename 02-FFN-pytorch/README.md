@@ -1,6 +1,7 @@
-# Building Feed Forward Networks with `Pytorch`
-
 <a href="https://colab.research.google.com/github/dev-SR/Deep-Learning/blob/main/02-FFN-pytorch/ffn.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+
+
+# Building Feed Forward Networks with `Pytorch`
 
 - [Building Feed Forward Networks with `Pytorch`](#building-feed-forward-networks-with-pytorch)
   - [Init](#init)
@@ -18,11 +19,12 @@
     - [Introduction to Basic BackPropagation](#introduction-to-basic-backpropagation)
     - [Full Back Propagation](#full-back-propagation)
     - [Generalizing Backpropagation](#generalizing-backpropagation)
-  - [Using torch tensor and autograd](#using-torch-tensor-and-autograd)
-  - [Using `NN.Parameter`](#using-nnparameter)
-  - [Using `NN.Linear` and `Optim`](#using-nnlinear-and-optim)
-  - [Using `NN.Sequential`](#using-nnsequential)
+  - [Building an NN model in PyTorch](#building-an-nn-model-in-pytorch)
+    - [Rebuilding simple model, and exploring pytorch utils](#rebuilding-simple-model-and-exploring-pytorch-utils)
+  - [Building a multilayer perceptron for classification](#building-a-multilayer-perceptron-for-classification)
+  - [Saving and reloading the trained model](#saving-and-reloading-the-trained-model)
   - [Running in GPU](#running-in-gpu)
+
 
 ## Init
 
@@ -46,6 +48,7 @@ import sys
 
 sys.path.append("..")  # Add the parent directory to the path
 from plot import plot_decision_regions
+from global_helpers import *
 ```
 
 ## The formal definition of an artificial neuron
@@ -1755,107 +1758,186 @@ plt.show()
 ![png](README_files/README_98_1.png)
 
 
-## Using torch tensor and autograd
+## Building an NN model in PyTorch
+
+
+The most commonly used approach for building an NN in PyTorch is through `nn.Module`, which allows
+layers to be stacked to form a network. This gives control over both the forward pass (how data moves through the network) and the backward pass (how gradients are computed during training).
+
+
+
+```python
+X_train, X_test, y_train, y_test = generate_blob_cluster(split_train_test=True)
+```
+
+    (1000, 2) (1000,)
+
+
+
+![png](README_files/README_101_1.png)
+
+
+
+```python
+import torch
+from torch.utils.data import DataLoader, TensorDataset
+
+train_ds = TensorDataset(torch.tensor(X_train).float(), torch.tensor(y_train).float())
+
+batch_size = 50
+train_dl = DataLoader(train_ds, batch_size, shuffle=True)
+```
+
+### Rebuilding simple model, and exploring pytorch utils
+
+
+
+```python
+n_features = 2
+n_hidden_1 = 10
+n_classes = 2
+
+torch.manual_seed(0)
+W1 = torch.randn(n_hidden_1, n_features, requires_grad=True)
+b1 = torch.zeros(n_hidden_1, requires_grad=True)
+W2 = torch.randn(n_classes, n_hidden_1, requires_grad=True)
+b2 = torch.zeros(n_classes, requires_grad=True)
+
+
+def model(X):
+    a1 = torch.matmul(X, W1.T) + b1  # (N,f) x (h1,f)^T => (N,h1)
+    h1 = a1.sigmoid()  # (N,h1)
+    a2 = torch.matmul(h1, W2.T) + b2  # (N,h1) x (h2,h1)^T => (N,h2)
+    h2 = a2.softmax(dim=1)  # (N,h2)
+    return h2
+
+
+loss_fn = nn.CrossEntropyLoss()
+# loss_fn = nn.NLLLoss()
+
+learning_rate = 0.1
+num_epochs = 50
+log_epochs = 10
+epoch_losses = []
+
+for epoch in range(num_epochs):
+    for X_batch, y_batch in train_dl:
+        # Forward pass
+        outputs = model(X_batch)
+        # Calculate loss
+        loss = loss_fn(outputs, y_batch.long())
+        # Compute gradients
+        loss.backward()
+        # Update weights and biases
+        with torch.no_grad():
+            """
+            When you update weights manually using plain tensor operations like `W1 -= learning_rate * W1.grad`, these operations themselves are not part of the computation graph and should not have associated gradients. Hence, wrapping these weight update operations inside torch.no_grad() allows you to perform the updates without autograd tracking, preventing unnecessary memory consumption for gradient computation and potential interference with your manual updates.
+            """
+            W1 -= learning_rate * W1.grad
+            b1 -= learning_rate * b1.grad
+            W2 -= learning_rate * W2.grad
+            b2 -= learning_rate * b2.grad
+
+            # Zero gradients
+            W1.grad.zero_()
+            b1.grad.zero_()
+            W2.grad.zero_()
+            b2.grad.zero_()
+            """
+            By zeroing the gradients with `optimizer.zero_grad()` at the beginning of each minibatch or iteration, you ensure that the gradients from the previous iterations don't interfere with the current computation.
+            """
+
+    epoch_losses.append(loss.item())
+
+    # Logging
+    if epoch % log_epochs == 0:
+        print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item()}")
+
+plt.plot(range(len(epoch_losses)), epoch_losses)
+plt.ylabel("Loss")
+plt.xlabel("Epoch")
+plt.show()
+```
+
+    Epoch [1/50], Loss: 0.6990156173706055
+    Epoch [11/50], Loss: 0.37149864435195923
+    Epoch [21/50], Loss: 0.3909918963909149
+    Epoch [31/50], Loss: 0.3687649965286255
+    Epoch [41/50], Loss: 0.3724702000617981
+
+
+
+![png](README_files/README_104_1.png)
+
+
+`torch.optim` provides a wide array of optimization algorithms, such as SGD, Adam, RMSprop, etc., to automatically update model parameters based on computed gradients during backpropagation.
+
+Using `torch.optim` simplifies training as it handles the weight updates for you. You simply define an optimizer, pass it the parameters to optimize, compute gradients with `loss.backward()`, and then call `optimizer.step()` to update the weights accordingly. This allows you to focus on designing complex models while the library takes care of the optimization process.
 
 
 
 ```python
 torch.manual_seed(0)
-W1 = torch.randn(10, 2) / math.sqrt(o)  # Shape-> (L_out,L_in)
-W1.requires_grad_()
-b1 = torch.zeros(10, requires_grad=True)
+W1 = torch.randn(n_hidden_1, n_features, requires_grad=True)
+b1 = torch.zeros(n_hidden_1, requires_grad=True)
+W2 = torch.randn(n_classes, n_hidden_1, requires_grad=True)
+b2 = torch.zeros(n_classes, requires_grad=True)
 
-W2 = torch.randn(4, 10) / math.sqrt(o)  # Shape-> (L_out,L_in)
-W2.requires_grad_()
-b2 = torch.zeros(4, requires_grad=True)
+# updating through optimizer
+optimizer = optim.Adam([W1, b1, W2, b2], lr=0.1)
 
-print(W1.shape, W2.shape)
+
+epoch_losses = []
+for epoch in range(num_epochs):
+    for X_batch, y_batch in train_dl:
+        # Forward pass
+        outputs = model(X_batch)
+        # Calculate loss
+        loss = loss_fn(outputs, y_batch.long())
+        # Compute gradients
+        loss.backward()
+        # Update weights and biases
+        optimizer.step()
+        # Zero gradients for the next epoch
+        optimizer.zero_grad()
+
+        # with torch.no_grad():
+        #     W1 -= learning_rate * W1.grad
+        #     b1 -= learning_rate * b1.grad
+        #     W2 -= learning_rate * W2.grad
+        #     b2 -= learning_rate * b2.grad
+
+        #     # Zero gradients
+        #     W1.grad.zero_()
+        #     b1.grad.zero_()
+        #     W2.grad.zero_()
+        #     b2.grad.zero_()
+
+    epoch_losses.append(loss.item())
+
+    # Logging
+    if epoch % log_epochs == 0:
+        print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item()}")
+
+plt.plot(range(len(epoch_losses)), epoch_losses)
+plt.ylabel("Loss")
+plt.xlabel("Epoch")
+plt.show()
 ```
 
-
-```python
-def model(X):
-    a1 = torch.matmul(X, W1.T) + b1  # (N,2) x (2,10)^T => (N,10)
-    # print(a1.shape)
-    h1 = a1.sigmoid()  # (N,10)
-    # print(h1.shape)
-    a2 = torch.matmul(h1, W2.T) + b2  # (N,10) x (10,4)^T => (N,4)
-    # print(a2.shape)
-    h2 = a2.softmax(dim=1)  # (N,4)
-    # print(h2.shape)
-    return h2
-```
-
-
-```python
-# Calculate accuracy (a classification metric)
-def accuracy_fn(y_hat, y):
-    pred = torch.argmax(y_hat, dim=1)
-    return (pred == y).float().mean()
-```
-
-
-```python
-learning_rate = 0.2
-epochs = 2000
-
-X_train = X_train.float()
-Y_train = y_train.long()
-
-loss_err = []
-acc_err = []
-
-for epoch in range(epochs):
-    y_hat = model(X_train)
-    loss = Fn.cross_entropy(y_hat, Y_train)
-    loss_err.append(loss.item())
-    acc_err.append(accuracy_fn(y_hat, y_train))
-    loss.backward()
-
-    with torch.no_grad():
-        W1 -= W1.grad * learning_rate
-        b1 -= b1.grad * learning_rate
-        W2 -= W2.grad * learning_rate
-        b2 -= b2.grad * learning_rate
-
-        W1.grad.zero_()
-        b1.grad.zero_()
-        W2.grad.zero_()
-        b2.grad.zero_()
-
-plt.plot(loss_err, "r-")
-plt.plot(acc_err, "b-")
-
-print(f"Loss before training : {loss_err[0]}")
-print(f"Loss after training : {loss_err[-1]}")
-```
-
-## Using `NN.Parameter`
+    Epoch [1/50], Loss: 0.7872458696365356
+    Epoch [11/50], Loss: 0.313730388879776
+    Epoch [21/50], Loss: 0.36338865756988525
+    Epoch [31/50], Loss: 0.31764933466911316
+    Epoch [41/50], Loss: 0.3633410334587097
 
 
 
-```python
-# def model(X):
-#     a1 = torch.matmul(X,W1.T) + b1 # (N,2) x (2,10)^T => (N,10)
-#     # print(a1.shape)
-#     h1 = a1.sigmoid() # (N,10)
-#     # print(h1.shape)
-#     a2 = torch.matmul(h1,W2.T) + b2 # (N,10) x (10,4)^T => (N,4)
-#     # print(a2.shape)
-#     h2 = a2.softmax(dim=1) # (N,4)
-#     # print(h2.shape)
-#     return h2
-# torch.manual_seed(0)
-# W1 = torch.randn(10,2) / math.sqrt(o) # Shape-> (L_out,L_in)
-# W1.requires_grad_()
-# b1 = torch.zeros(10,requires_grad=True)
+![png](README_files/README_106_1.png)
 
-# W2 = torch.randn(4,10) / math.sqrt(o) # Shape-> (L_out,L_in)
-# W2.requires_grad_()
-# b2 = torch.zeros(4,requires_grad=True)
 
-# print(W1.shape,W2.shape)
-```
+Building class based model with `nn.Module`
+
 
 
 ```python
@@ -1863,15 +1945,14 @@ class FirstNetwork(nn.Module):
     def __init__(self):
         super().__init__()
         torch.manual_seed(0)
-        self.W1 = nn.Parameter(torch.randn(10, 2, dtype=torch.float) / math.sqrt(o))
-        self.b1 = nn.Parameter(torch.zeros(10))
-        self.W2 = nn.Parameter(torch.randn(4, 10, dtype=torch.float) / math.sqrt(o))
-        self.b2 = nn.Parameter(torch.zeros(4))
+        self.W1 = nn.Parameter(torch.randn(n_hidden_1, n_features))
+        self.b1 = nn.Parameter(torch.zeros(n_hidden_1))
+        self.W2 = nn.Parameter(torch.randn(n_classes, n_hidden_1))
+        self.b2 = nn.Parameter(torch.zeros(n_classes))
 
     def forward(self, X):
         a1 = torch.matmul(X, self.W1.T) + b1
         h1 = a1.sigmoid()
-
         a2 = torch.matmul(h1, self.W2.T) + b2
         h2 = a2.softmax(dim=1)
 
@@ -1879,239 +1960,252 @@ class FirstNetwork(nn.Module):
 
 
 model = FirstNetwork()
+
+# no need to define `Adam([W1, b1, W2, b2], lr=0.1)` as parameters are already defined in the model
+# and can be accessed through `model.parameters()`
+optimizer = optim.Adam(model.parameters(), lr=0.1)
 ```
 
 
-    ---------------------------------------------------------------------------
-
-    NameError                                 Traceback (most recent call last)
-
-    <ipython-input-168-061af9e8edc8> in <module>
-         18
-         19
-    ---> 20 model = FirstNetwork()
-
-
-    <ipython-input-168-061af9e8edc8> in __init__(self)
-          3         super().__init__()
-          4         torch.manual_seed(0)
-    ----> 5         self.W1 = nn.Parameter(torch.randn(10, 2, dtype=torch.float) / math.sqrt(o))
-          6         self.b1 = nn.Parameter(torch.zeros(10))
-          7         self.W2 = nn.Parameter(torch.randn(4, 10, dtype=torch.float) / math.sqrt(o))
-
-
-    NameError: name 'o' is not defined
-
-
-
 ```python
-def fit(epochs=2000, learning_rate=1):
-    loss_err = []
-    acc_err = []
-    for epoch in range(epochs):
-        y_hat = model(X_train)
-        loss = Fn.cross_entropy(y_hat, y_train)
-        loss_err.append(loss.item())
-        acc_err.append(accuracy_fn(y_hat, y_train))
-
+epoch_losses = []
+for epoch in range(num_epochs):
+    for X_batch, y_batch in train_dl:
+        # Forward pass
+        outputs = model(X_batch)
+        # Calculate loss
+        loss = loss_fn(outputs, y_batch.long())
+        # Compute gradients
         loss.backward()
+        # Update weights and biases
+        optimizer.step()
+        optimizer.zero_grad()
 
-        # with torch.no_grad():
-        #     W1 -= W1.grad * learning_rate
-        #     b1 -= b1.grad * learning_rate
-        #     W2 -= W2.grad * learning_rate
-        #     b2 -= b2.grad * learning_rate
+    epoch_losses.append(loss.item())
 
-        #     W1.grad.zero_()
-        #     b1.grad.zero_()
-        #     W2.grad.zero_()
-        #     b2.grad.zero_()
+    # Logging
+    if epoch % log_epochs == 0:
+        print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item()}")
 
-        with torch.no_grad():
-            for param in model.parameters():
-                if param.grad is not None:
-                    param -= learning_rate * param.grad
-            model.zero_grad()
-
-    plt.plot(loss_err, "r-")
-    plt.plot(acc_err, "b-")
-    print(f"Loss before training : {loss_err[0]}")
-    print(f"Loss after training : {loss_err[-1]}")
-
-
-fit()
+plt.plot(range(len(epoch_losses)), epoch_losses)
+plt.ylabel("Loss")
+plt.xlabel("Epoch")
+plt.show()
 ```
 
-## Using `NN.Linear` and `Optim`
+    Epoch [1/50], Loss: 0.6421765685081482
+    Epoch [11/50], Loss: 0.3133297562599182
+    Epoch [21/50], Loss: 0.3632497191429138
+    Epoch [31/50], Loss: 0.32193225622177124
+    Epoch [41/50], Loss: 0.363283634185791
+
+
+
+![png](README_files/README_109_1.png)
+
+
+## Building a multilayer perceptron for classification
+
+
+For this problem, we are going to use the `Linear` layer, which is also known as a fully connected layer or dense layer, and can be best represented by `f(w×x+b)`, where `x` represents a tensor containing the input features, `w` and `b` are the weight matrix and the bias vector, and `f` is the activation function.
+
+**Each layer in an NN receives its inputs from the preceding layer**; _therefore, its dimensionality (rank
+and shape) is fixed. Typically, we need to concern ourselves with the dimensionality of output only
+when we design an NN architecture_. Here, we want to define a model with two hidden layers. _The first
+one receives an input of four features and projects them to 16 neurons. The second layer receives the
+output of the previous layer (which has a size of 16) and projects them to three output neurons, since
+we have three class labels. This can be done as follows:_
 
 
 
 ```python
-class NNLinearNetwork_v1(nn.Module):
-    def __init__(self):
+class Model(nn.Module):
+    def __init__(self, input_features=2, n_hidden=10, output_features=2):
         super().__init__()
         torch.manual_seed(0)
-        # self.W1 = nn.Parameter(torch.randn(10,2, dtype=torch.float)/math.sqrt(o))
-        # self.b1 = nn.Parameter(torch.zeros(10))
-        # self.W2 = nn.Parameter(torch.randn(4,10, dtype=torch.float)/math.sqrt(o))
-        # self.b2 = nn.Parameter(torch.zeros(4))
+        # self.W1 = nn.Parameter(torch.randn(n_hidden_1, n_features))
+        # self.b1 = nn.Parameter(torch.zeros(n_hidden_1))
+        # self.W2 = nn.Parameter(torch.randn(n_classes, n_hidden_1))
+        # self.b2 = nn.Parameter(torch.zeros(n_classes))
 
-        self.l1 = nn.Linear(in_features=2, out_features=10)
-        self.l2 = nn.Linear(10, 4)
+        self.layer1 = nn.Linear(input_features, n_hidden)
+        self.layer2 = nn.Linear(n_hidden, output_features)
 
-    def forward(self, X):
-        # a1= torch.matmul(X,self.W1.T)+b1
-        a1 = self.l1(X)
-        h1 = a1.sigmoid()
-
-        # a2 = torch.matmul(h1,self.W2.T)+b2
-        a2 = self.l2(h1)
-        h2 = a2.softmax(dim=1)
-
-        return h2
-
-
-model = NNLinearNetwork_v1()
-```
-
-
-```python
-def fit(epochs=2000, learning_rate=1):
-    loss_err = []
-    acc_err = []
-    opt = optim.SGD(model.parameters(), lr=learning_rate)
-    for epoch in range(epochs):
-        y_hat = model(X_train)
-        loss = Fn.cross_entropy(y_hat, y_train)
-        loss_err.append(loss.item())
-        acc_err.append(accuracy_fn(y_hat, y_train))
-
-        loss.backward()
-        opt.step()
-        opt.zero_grad()
-
-        # with torch.no_grad():
-        #     for param in model.parameters():
-        #         if param.grad is not None:
-        #             param -= learning_rate * param.grad
-        #     model.zero_grad()
-
-    plt.plot(loss_err, "r-")
-    plt.plot(acc_err, "b-")
-    print(f"Loss before training : {loss_err[0]}")
-    print(f"Loss after training : {loss_err[-1]}")
-
-
-fit()
-```
-
-## Using `NN.Sequential`
-
-
-
-```python
-class NNLinearNetwork_v2(nn.Module):
-    def __init__(self):
-        super().__init__()
-        torch.manual_seed(0)
-        # self.l1 = nn.Linear(in_features=2,out_features=10)
-        # self.l2 = nn.Linear(10,4)
-        self.net = nn.Sequential(
-            nn.Linear(2, 10), nn.Sigmoid(), nn.Linear(10, 4), nn.Softmax(dim=1)
-        )
-
-    def forward(self, X):
-        # a1 = self.l1(X)
+    def forward(self, x):
+        # a1 = torch.matmul(X, self.W1.T) + b1
         # h1 = a1.sigmoid()
-        # a2 = self.l2(h1)
+        # a2 = torch.matmul(h1, self.W2.T) + b2
         # h2 = a2.softmax(dim=1)
-        # return h2
-        return self.net(X)
+        x = self.layer1(x)
+        x = nn.Sigmoid()(x)
+        x = self.layer2(x)
+        x = nn.Softmax(dim=1)(x)
+        return x
+
+
+input_feature = X_train.shape[1]
+n_hidden = 16
+output_feature = 2
+
+model = Model(input_feature, n_hidden, output_feature)
 ```
 
 
 ```python
-def fit(x, y, model, opt, loss_fn, epochs=2000, log=False):
-    loss_err = []
-    acc_err = []
-    for epoch in range(epochs):
-        loss = loss_fn(model(x), y)
-        loss_err.append(loss.item())
-        acc_err.append(accuracy_fn(y_hat, y_train))
+num_epochs = 100
+loss_hist = [0] * num_epochs
+accuracy_hist = [0] * num_epochs
 
+for epoch in range(num_epochs):
+    for x_batch, y_batch in train_dl:
+        pred = model(x_batch)
+        loss = loss_fn(pred, y_batch.long())
         loss.backward()
-        opt.step()
-        opt.zero_grad()
+        optimizer.step()
+        optimizer.zero_grad()
 
-    if log:
-        plt.plot(loss_err, "r-")
-        plt.plot(acc_err, "b-")
-        print(f"Loss before training : {loss_err[0]}")
-        print(f"Loss after training : {loss_err[-1]}")
+        loss_hist[epoch] += loss.item() * y_batch.size(0)
+        is_correct = (torch.argmax(pred, dim=1) == y_batch).float()
+        accuracy_hist[epoch] += is_correct.sum()
 
-
-model = NNLinearNetwork_v2()
-loss_fn = Fn.cross_entropy
-opt = optim.SGD(model.parameters(), lr=1)
-
-fit(x=X_train, y=y_train, model=model, opt=opt, loss_fn=loss_fn, log=True)
+    loss_hist[epoch] /= len(train_dl.dataset)
+    accuracy_hist[epoch] /= len(train_dl.dataset)
 ```
+
+
+```python
+fig = plt.figure(figsize=(12, 5))
+ax = fig.add_subplot(1, 2, 1)
+ax.plot(loss_hist, lw=3)
+ax.set_title("Training loss", size=15)
+ax.set_xlabel("Epoch", size=15)
+ax.tick_params(axis="both", which="major", labelsize=15)
+
+ax = fig.add_subplot(1, 2, 2)
+ax.plot(accuracy_hist, lw=3)
+ax.set_title("Training accuracy", size=15)
+ax.set_xlabel("Epoch", size=15)
+ax.tick_params(axis="both", which="major", labelsize=15)
+plt.tight_layout()
+
+# plt.savefig('figures/12_09.pdf')
+
+plt.show()
+```
+
+
+![png](README_files/README_114_0.png)
+
+
+
+```python
+X_test = torch.from_numpy(X_test).float()
+y_test = torch.from_numpy(y_test)
+pred_test = model(X_test)
+
+correct = (torch.argmax(pred_test, dim=1) == y_test).float()
+accuracy = correct.mean()
+
+print(f"Test Acc.: {accuracy:.4f}")
+```
+
+    Test Acc.: 0.4909
+
+
+## Saving and reloading the trained model
+
+
+
+```python
+path = "sample_classifier.pt"
+torch.save(model, path)
+```
+
+
+```python
+model_new = torch.load(path)
+model_new.eval()
+```
+
+
+
+
+    Model(
+      (layer1): Linear(in_features=2, out_features=16, bias=True)
+      (layer2): Linear(in_features=16, out_features=2, bias=True)
+    )
+
+
+
+
+```python
+red_test = model_new(X_test)
+
+correct = (torch.argmax(pred_test, dim=1) == y_test).float()
+accuracy = correct.mean()
+
+print(f"Test Acc.: {accuracy:.4f}")
+```
+
+    Test Acc.: 0.4909
+
+
+If you want to save only the learned parameters, you can use `save(model.state_dict())` as follows:
+
+
+
+```python
+path = "classifier_state.pt"
+torch.save(model.state_dict(), path)
+```
+
+
+```python
+model_new = Model(input_size, hidden_size, output_size)
+model_new.load_state_dict(torch.load(path))
+```
+
+
+
+
+    <All keys matched successfully>
+
+
 
 ## Running in GPU
 
 
 
 ```python
-class NNLinearNetwork_v3(nn.Module):
-    def __init__(self):
-        super().__init__()
-        torch.manual_seed(0)
-        self.net = nn.Sequential(
-            nn.Linear(2, 1024 * 4),
-            nn.Sigmoid(),
-            nn.Linear(1024 * 4, 4),
-            nn.Softmax(dim=1),
-        )
-
-    def forward(self, X):
-        return self.net(X)
-```
-
-
-```python
-def fit(x, y, model, opt, loss_fn, epochs=2000, log=False):
-    loss_err = []
-    acc_err = []
-    for epoch in range(epochs):
-        loss = loss_fn(model(x), y)
-        loss_err.append(loss.item())
-
-        loss.backward()
-        opt.step()
-        opt.zero_grad()
-
-    if log:
-        print(f"Loss before training : {loss_err[0]}")
-        print(f"Loss after training : {loss_err[-1]}")
-```
-
-
-```python
 device = torch.device("cpu")  # cuda #cpu
 print(device)
 
-X_train = X_train.to(device)
-y_train = y_train.to(device)
-model = NNLinearNetwork_v3().to(device)
+
+X_train = torch.tensor(X_train).float().to(device)
+y_train = torch.tensor(y_train).float().to(device)
+model = Model().to(device)
 model.to(device)
 ```
+
+    cpu
+
+
+
+
+
+    Model(
+      (layer1): Linear(in_features=2, out_features=10, bias=True)
+      (layer2): Linear(in_features=10, out_features=2, bias=True)
+    )
+
+
 
 
 ```python
 %%time
 loss_fn = Fn.cross_entropy
 opt = optim.SGD(model.parameters(),lr=1)
-fit(x=X_train,y=y_train,model=model,opt=opt,loss_fn=loss_fn)
+# fit(x=X_train,y=y_train,model=model,opt=opt,loss_fn=loss_fn)
 
 ```
 
@@ -2121,11 +2215,10 @@ fit(x=X_train,y=y_train,model=model,opt=opt,loss_fn=loss_fn)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 
-X_train = X_train.to(device)
-y_train = y_train.to(device)
-model = NNLinearNetwork_v3().to(device)
-
-fit(x=X_train,y=y_train,model=model,opt=opt,loss_fn=loss_fn)
+X_train = torch.tensor(X_train).float().to(device)
+y_train = torch.tensor(y_train).float().to(device)
+model = Model().to(device)
+# fit(x=X_train,y=y_train,model=model,opt=opt,loss_fn=loss_fn)
 ```
 
 
