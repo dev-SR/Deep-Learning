@@ -39,6 +39,38 @@ def generate_blob_cluster(split_train_test=False):
         return X_train, X_test, y_train, y_test
 
 
+def generate_xor_data(samples=1000, split_train_test=False, seed=1):
+    """
+    Usage:
+    X,y = generate_xor_data()
+
+    X_train, X_test, y_train, y_test = generate_xor_data(split_train_test=True)
+
+    Logic:
+    1. Generate 'samples' number of 2-dimensional random values uniformly between -1 and 1.
+    2. Initially set all labels to 1.
+    3. For each sample:
+        -   If the product of its two feature values is less than zero (indicating different signs),
+            set the label to 0, simulating XOR behavior.
+    """
+    np.random.seed(seed)
+    x = np.random.uniform(low=-1, high=1, size=(samples, 2))
+    y = np.ones(samples)
+    y[x[:, 0] * x[:, 1] < 0] = 0
+
+    fig = plt.figure(figsize=(6, 6))
+    plt.plot(x[y == 0, 0], x[y == 0, 1], "o", alpha=0.75, markersize=10)
+    plt.plot(x[y == 1, 0], x[y == 1, 1], "<", alpha=0.75, markersize=10)
+    plt.xlabel(r"$x_1$", size=15)
+    plt.ylabel(r"$x_2$", size=15)
+    plt.show()
+
+    if split_train_test:
+        return train_test_split(x, y, test_size=0.3, random_state=seed)
+    else:
+        return x, y
+
+
 def minibatch_generator(X, y, minibatch_size):
     indices = np.arange(X.shape[0])
     np.random.shuffle(indices)
