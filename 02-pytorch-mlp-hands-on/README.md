@@ -1,3 +1,6 @@
+<a href="https://colab.research.google.com/github/dev-SR/Deep-Learning/blob/main/02-FFN-pytorch/ffn.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+
+
 # Building FeedForward Networks with `Pytorch`
 
 - [Building FeedForward Networks with `Pytorch`](#building-feedforward-networks-with-pytorch)
@@ -26,6 +29,8 @@
   - [Saving and reloading the trained model](#saving-and-reloading-the-trained-model)
   - [Running in GPU](#running-in-gpu)
 
+
+
 **Deep feedforward networks**, also called **feedforward neural networks**, or multilayer perceptrons (MLPs), are the quintessential deep learning models.The goal of a feedforward network is to approximate some function
 $f*$. These models are called _feedforward_ because there are no _feedback_ connections. A general form of a deep feedforward network can be represented by:
 
@@ -40,7 +45,7 @@ $$
 
 ```python
 """
-cd .\02-mlp-hands-on-[pytorch]
+cd 02-pytorch-mlp-hands-on
 jupyter nbconvert --to markdown ffn.ipynb --output README.md
 """
 import torch
@@ -50,14 +55,18 @@ from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
 import matplotlib.pyplot as plt
 
-from helper import *
+from helper import plot_gradient_one_var, plot_gradient_descent_one_var
 import sys
 
 sys.path.append("..")  # Add the parent directory to the path
+from plot import plot_decision_regions  # noqa: E402
 
-from plot import plot_decision_regions
-from global_helpers import generate_blob_cluster  # noqa: F403
-
+from global_helpers import (  # noqa: E402
+    generate_blob_cluster,
+    compute_mse_and_acc,
+    minibatch_generator,
+    int_to_onehot,
+)
 ```
 
 ## The formal definition of an artificial neuron
@@ -128,19 +137,13 @@ by the following steps:
 Here, the output value is the class label predicted by the **unit step function** that we defined earlier, and the simultaneous update of the bias unit and each weight, $w_j$, in the weight vector, $w$, can be more
 formally written as:
 
-$$
-w_j \leftarrow w_j + \Delta w_j \quad \text{and} \quad b \leftarrow b + \Delta b
-$$
+$$w_j \leftarrow w_j + \Delta w_j \quad \text{and} \quad b \leftarrow b + \Delta b$$
 
 The update values (“deltas”) are computed as follows:
 
-$$
-\Delta w_j = \eta \cdot (y^{(i)} - \hat{y}^{(i)}) \cdot x_j^{(i)}
-$$
+$$\Delta w_j = \eta \cdot (y^{(i)} - \hat{y}^{(i)}) \cdot x_j^{(i)}$$
 
-$$
-\Delta b = \eta \cdot (y^{(i)} - \hat{y}^{(i)})
-$$
+$$\Delta b = \eta \cdot (y^{(i)} - \hat{y}^{(i)})$$
 
 Each weight, $w_j$, corresponds to a feature, $x_j$, in the dataset, which is involved in determining the update value, $\Delta w_{ij}$, defined above. Furthermore, $\eta$ is the learning rate (typically a constant between 0.0 and 1.0), $y^{(i)}$ is the true class label of the $i$th training example, and $y^{(i)}$ is the predicted class label. It is important to note that the bias unit and all weights in the weight vector are being updated simultaneously, which means that we don’t recompute the predicted label, $y^{(i)}$, before the bias unit and all of the weights are updated via the respective update values, $\Delta w_{ij}$ and $\Delta b$.
 
@@ -891,7 +894,7 @@ For instance:
 Note that the $b$’s denote the bias units. In fact, $b^{(h)}$ and $b^{(out)}$ are vectors with the number of elements equal to the number of nodes in the corresponding layer. For example, $b^{(h)}$ stores $d$ bias units, where $d$ is the number of nodes in the hidden layer.
 
 
-_Each node in layer $l$ is connected to all nodes in layer $l + 1$ via a weight coefficient_. For instance, the connection between the $k$ th unit in layer $l$ to the $j$ th unit in layer $l + 1$ will be represented as $w_{jk}^{(l)}$, in short, $w_{j}^{(l)}$.
+Each node in layer $l$ is connected to all nodes in layer $l + 1$ via a weight coefficient. For instance, the connection between the $k$ th unit in layer $l$ to the $j$ th unit in layer $l + 1$ will be represented as $w_{jk}^{(l)}$, in short, $w_{j}^{(l)}$.
 
 Referring back to figure we denote the weight matrix that connects the input to the hidden layer as $W^{(h)}$, and we represent the matrix connecting the hidden layer to the output layer as $W^{(out)}$.
 
@@ -1172,46 +1175,30 @@ How do we updates the weights of a MLP?
 
 We start by performing forward propagation to calculate the activation of the output layer, formulated as:
 
-$$
-Z_{1} = XW^{T}_{1}+ b_{1} \quad \text{(net input of the hidden layer 1)}
-$$
+$$Z_{1} = XW^{T}_{1}+ b_{1} \quad \text{(net input of the hidden layer 1)}$$
 
-$$
-A_{1} = \sigma(Z_{1}) \quad \text{(activation of the hidden layer 1)}
-$$
+$$A_{1} = \sigma(Z_{1}) \quad \text{(activation of the hidden layer 1)}$$
 
-$$
-Z_{(out)} = A_{1}W_{(out)}^{T} + b_{(out)} \quad \text{(net input of the output layer)}
-$$
+$$Z_{(out)} = A_{1}W_{(out)}^{T} + b_{(out)} \quad \text{(net input of the output layer)}$$
 
-$$
-A_{(out)} = \sigma(Z_{(out)}) \quad \text{(activation of the output layer)}
-$$
+$$A_{(out)} = \sigma(Z_{(out)}) \quad \text{(activation of the output layer)}$$
 
 And, Mean Squared Error (MSE) loss function encompasses both averaging over the $t$ activation units in the network and averaging over the $n$ examples in the dataset or mini-batch:
 
-$$
-L(W) = \frac{1}{n} \sum_{i=1}^{n} \frac{1}{t} \sum_{j=1}^{t} (Y_j^{(i)} - A_{j}^{(out)(i)})^2
-$$
+$$L(W) = \frac{1}{n} \sum_{i=1}^{n} \frac{1}{t} \sum_{j=1}^{t} (Y_j^{(i)} - A_{j}^{(out)(i)})^2$$
 
 Here, the superscript $[i]$ refers to a specific example in our training dataset.
 
 Our objective is to minimize the loss function $L(W)$, hence we need to compute the partial derivatives of the parameters $W$ concerning each weight for every layer in the network.
 
-$$
-\frac{\partial L}{\partial W_{1}} = ?
-$$
+$$\frac{\partial L}{\partial W_{1}} = ?$$
 
-$$
-\frac{\partial L}{\partial W_{out}} = ?
-$$
+$$\frac{\partial L}{\partial W_{out}} = ?$$
 
 and then udate the corresponding weights:
 
-$$
-W_1 \leftarrow W_1 - \eta \frac{\partial L}{\partial W_{1}} \\
-W_{out} \leftarrow W_{out} - \eta \frac{\partial L}{\partial W_{out}}
-$$
+$$W_1 \leftarrow W_1 - \eta \frac{\partial L}{\partial W_{1}}$$
+$$W_{out} \leftarrow W_{out} - \eta \frac{\partial L}{\partial W_{out}}$$
 
 <p align="center">
 <img src="img/forward.jpg" alt="forward.jpg" width="800px"/>
@@ -1219,15 +1206,11 @@ $$
 
 As a reminder, the chain rule states:
 
-$$
-\frac{\partial}{\partial Z} p(q((z))) = \frac{\partial p}{\partial q}\frac{\partial q}{\partial Z}
-$$
+$$\frac{\partial}{\partial Z} p(q((z))) = \frac{\partial p}{\partial q}\frac{\partial q}{\partial Z}$$
 
 Let's apply the chain rule to solve for **The Gradient for output layer is given by**:
 
-$$
-\frac{\partial L}{\partial W_{out}} = (\frac{\partial L}{\partial A_{out}} \times \frac{\partial A_{out}}{\partial Z_{out}}) \times \frac{\partial Z_{out}}{\partial W_{out}}=\delta_{out}\times \frac{\partial Z_{out}}{\partial W_{out}}
-$$
+$$\frac{\partial L}{\partial W_{out}} = (\frac{\partial L}{\partial A_{out}} \times \frac{\partial A_{out}}{\partial Z_{out}}) \times \frac{\partial Z_{out}}{\partial W_{out}}=\delta_{out}\times \frac{\partial Z_{out}}{\partial W_{out}}$$
 
 This is because $\delta_{out}$ terms are involved in computing the partial derivatives (or gradients) of the
 hidden layer weights as well; hence, we can reuse $\delta_{out}$ .
@@ -1369,7 +1352,6 @@ plt.ylabel("Mean squared error")
 plt.xlabel("Epoch")
 # plt.savefig('figures/11_07.png', dpi=300)
 plt.show()
-
 ```
 
     Epoch: 001/050 | Train MSE: 0.28 | Train Acc: 83.67% | Valid Acc: 85.33%
@@ -1423,40 +1405,23 @@ $$
 
 So the Layer 1 Parameters:
 
-$$
+$$\frac{{\partial L\left( W  \right)}}{{\partial W _{11}^{(1)}}} = \left( {\frac{{\partial L\left( W  \right)}}{{\partial A _1^{(o)}}}} \right)\left( {\frac{{\partial A _1^{(o)}}}{{\partial Z _1^{(o)}}}} \right)\left( {\frac{{\partial Z _1^{(o)}}}{{\partial A _1^{(1)}}}} \right)\left( {\frac{{\partial A _1^{(1)}}}{{\partial Z _1^{(1)}}}} \right)\left( {\frac{{\partial Z _1^{(1)}}}{{\partial W _{11}^{(1)}}}} \right) + \left( {\frac{{\partial L\left( W  \right)}}{{\partial A _2^{(o)}}}} \right)\left( {\frac{{\partial A _2^{(o)}}}{{\partial Z _2^{(o)}}}} \right)\left( {\frac{{\partial Z _2^{(o)}}}{{\partial A _1^{(1)}}}} \right)\left( {\frac{{\partial A _1^{(1)}}}{{\partial Z _1^{(1)}}}} \right)\left( {\frac{{\partial Z _1^{(1)}}}{{\partial W _{11}^{(1)}}}} \right)$$
 
-\frac{{\partial L\left( W  \right)}}{{\partial W _{11}^{(1)}}} = \left( {\frac{{\partial L\left( W  \right)}}{{\partial A _1^{(o)}}}} \right)\left( {\frac{{\partial A _1^{(o)}}}{{\partial Z _1^{(o)}}}} \right)\left( {\frac{{\partial Z _1^{(o)}}}{{\partial A _1^{(1)}}}} \right)\left( {\frac{{\partial A _1^{(1)}}}{{\partial Z _1^{(1)}}}} \right)\left( {\frac{{\partial Z _1^{(1)}}}{{\partial W _{11}^{(1)}}}} \right) + \left( {\frac{{\partial L\left( W  \right)}}{{\partial A _2^{(o)}}}} \right)\left( {\frac{{\partial A _2^{(o)}}}{{\partial Z _2^{(o)}}}} \right)\left( {\frac{{\partial Z _2^{(o)}}}{{\partial A _1^{(1)}}}} \right)\left( {\frac{{\partial A _1^{(1)}}}{{\partial Z _1^{(1)}}}} \right)\left( {\frac{{\partial Z _1^{(1)}}}{{\partial W _{11}^{(1)}}}} \right)
-$$
+$$\frac{{\partial L\left( W  \right)}}{{\partial W _{12}^{(1)}}} = \left( {\frac{{\partial L\left( W  \right)}}{{\partial A _1^{(o)}}}} \right)\left( {\frac{{\partial A _1^{(o)}}}{{\partial Z _1^{(o)}}}} \right)\left( {\frac{{\partial Z _1^{(o)}}}{{\partial A _1^{(1)}}}} \right)\left( {\frac{{\partial A _1^{(1)}}}{{\partial Z _1^{(1)}}}} \right)\left( {\frac{{\partial Z _1^{(1)}}}{{\partial W _{12}^{(1)}}}} \right) + \left( {\frac{{\partial L\left( W  \right)}}{{\partial A _2^{(o)}}}} \right)\left( {\frac{{\partial A _2^{(o)}}}{{\partial Z _2^{(o)}}}} \right)\left( {\frac{{\partial Z _2^{(o)}}}{{\partial A _1^{(1)}}}} \right)\left( {\frac{{\partial A _1^{(1)}}}{{\partial Z _1^{(1)}}}} \right)\left( {\frac{{\partial Z _1^{(1)}}}{{\partial W _{12}^{(1)}}}} \right)$$
 
-$$
-\frac{{\partial L\left( W  \right)}}{{\partial W _{12}^{(1)}}} = \left( {\frac{{\partial L\left( W  \right)}}{{\partial A _1^{(o)}}}} \right)\left( {\frac{{\partial A _1^{(o)}}}{{\partial Z _1^{(o)}}}} \right)\left( {\frac{{\partial Z _1^{(o)}}}{{\partial A _1^{(1)}}}} \right)\left( {\frac{{\partial A _1^{(1)}}}{{\partial Z _1^{(1)}}}} \right)\left( {\frac{{\partial Z _1^{(1)}}}{{\partial W _{12}^{(1)}}}} \right) + \left( {\frac{{\partial L\left( W  \right)}}{{\partial A _2^{(o)}}}} \right)\left( {\frac{{\partial A _2^{(o)}}}{{\partial Z _2^{(o)}}}} \right)\left( {\frac{{\partial Z _2^{(o)}}}{{\partial A _1^{(1)}}}} \right)\left( {\frac{{\partial A _1^{(1)}}}{{\partial Z _1^{(1)}}}} \right)\left( {\frac{{\partial Z _1^{(1)}}}{{\partial W _{12}^{(1)}}}} \right)
-$$
+$$\frac{{\partial L\left( W  \right)}}{{\partial W _{21}^{(1)}}} = \left( {\frac{{\partial L\left( W  \right)}}{{\partial A _1^{(o)}}}} \right)\left( {\frac{{\partial A _1^{(o)}}}{{\partial Z _1^{(o)}}}} \right)\left( {\frac{{\partial Z _1^{(o)}}}{{\partial A _2^{(1)}}}} \right)\left( {\frac{{\partial A _2^{(1)}}}{{\partial Z _2^{(1)}}}} \right)\left( {\frac{{\partial Z _2^{(1)}}}{{\partial W _{21}^{(1)}}}} \right) + \left( {\frac{{\partial L\left( W  \right)}}{{\partial A _2^{(o)}}}} \right)\left( {\frac{{\partial A _2^{(o)}}}{{\partial Z _2^{(o)}}}} \right)\left( {\frac{{\partial Z _2^{(o)}}}{{\partial A _2^{(1)}}}} \right)\left( {\frac{{\partial A _2^{(1)}}}{{\partial Z _2^{(1)}}}} \right)\left( {\frac{{\partial Z _2^{(1)}}}{{\partial W _{21}^{(1)}}}} \right)$$
 
-$$
-\frac{{\partial L\left( W  \right)}}{{\partial W _{21}^{(1)}}} = \left( {\frac{{\partial L\left( W  \right)}}{{\partial A _1^{(o)}}}} \right)\left( {\frac{{\partial A _1^{(o)}}}{{\partial Z _1^{(o)}}}} \right)\left( {\frac{{\partial Z _1^{(o)}}}{{\partial A _2^{(1)}}}} \right)\left( {\frac{{\partial A _2^{(1)}}}{{\partial Z _2^{(1)}}}} \right)\left( {\frac{{\partial Z _2^{(1)}}}{{\partial W _{21}^{(1)}}}} \right) + \left( {\frac{{\partial L\left( W  \right)}}{{\partial A _2^{(o)}}}} \right)\left( {\frac{{\partial A _2^{(o)}}}{{\partial Z _2^{(o)}}}} \right)\left( {\frac{{\partial Z _2^{(o)}}}{{\partial A _2^{(1)}}}} \right)\left( {\frac{{\partial A _2^{(1)}}}{{\partial Z _2^{(1)}}}} \right)\left( {\frac{{\partial Z _2^{(1)}}}{{\partial W _{21}^{(1)}}}} \right)
-$$
-
-$$
-\frac{{\partial L\left( W  \right)}}{{\partial W _{22}^{(1)}}} = \left( {\frac{{\partial L\left( W  \right)}}{{\partial A _1^{(o)}}}} \right)\left( {\frac{{\partial A _1^{(o)}}}{{\partial Z _1^{(o)}}}} \right)\left( {\frac{{\partial Z _1^{(o)}}}{{\partial A _2^{(1)}}}} \right)\left( {\frac{{\partial A _2^{(1)}}}{{\partial Z _2^{(1)}}}} \right)\left( {\frac{{\partial Z _2^{(1)}}}{{\partial W _{22}^{(1)}}}} \right) + \left( {\frac{{\partial L\left( W  \right)}}{{\partial A _2^{(o)}}}} \right)\left( {\frac{{\partial A _2^{(o)}}}{{\partial Z _2^{(o)}}}} \right)\left( {\frac{{\partial Z _2^{(o)}}}{{\partial A _2^{(1)}}}} \right)\left( {\frac{{\partial A _2^{(1)}}}{{\partial Z _2^{(1)}}}} \right)\left( {\frac{{\partial Z _2^{(1)}}}{{\partial W _{22}^{(1)}}}} \right)
-$$
+$$\frac{{\partial L\left( W  \right)}}{{\partial W _{22}^{(1)}}} = \left( {\frac{{\partial L\left( W  \right)}}{{\partial A _1^{(o)}}}} \right)\left( {\frac{{\partial A _1^{(o)}}}{{\partial Z _1^{(o)}}}} \right)\left( {\frac{{\partial Z _1^{(o)}}}{{\partial A _2^{(1)}}}} \right)\left( {\frac{{\partial A _2^{(1)}}}{{\partial Z _2^{(1)}}}} \right)\left( {\frac{{\partial Z _2^{(1)}}}{{\partial W _{22}^{(1)}}}} \right) + \left( {\frac{{\partial L\left( W  \right)}}{{\partial A _2^{(o)}}}} \right)\left( {\frac{{\partial A _2^{(o)}}}{{\partial Z _2^{(o)}}}} \right)\left( {\frac{{\partial Z _2^{(o)}}}{{\partial A _2^{(1)}}}} \right)\left( {\frac{{\partial A _2^{(1)}}}{{\partial Z _2^{(1)}}}} \right)\left( {\frac{{\partial Z _2^{(1)}}}{{\partial W _{22}^{(1)}}}} \right)$$
 
 Layer 2/Output Layer Parameters:
 
-$$
-\frac{{\partial L\left( W\right)}}{{\partial W_{11}^{(o)}}} = \left( {\frac{{\partial L\left( W\right)}}{{\partial A_1^{(o)}}}} \right)\left( {\frac{{\partial A_1^{(o)}}}{{\partial Z _1^{(o)}}}} \right)\left( {\frac{{\partial Z _1^{(o)}}}{{\partial W_{11}^{(o)}}}} \right)
-$$
+$$\frac{{\partial L\left( W\right)}}{{\partial W_{11}^{(o)}}} = \left( {\frac{{\partial L\left( W\right)}}{{\partial A_1^{(o)}}}} \right)\left( {\frac{{\partial A_1^{(o)}}}{{\partial Z _1^{(o)}}}} \right)\left( {\frac{{\partial Z _1^{(o)}}}{{\partial W_{11}^{(o)}}}} \right)$$
 
-$$
-\frac{{\partial L\left( W\right)}}{{\partial W_{12}^{(o)}}} = \left( {\frac{{\partial L\left( W\right)}}{{\partial A_1^{(o)}}}} \right)\left( {\frac{{\partial A_1^{(o)}}}{{\partial Z _1^{(o)}}}} \right)\left( {\frac{{\partial Z _1^{(o)}}}{{\partial W_{12}^{(o)}}}} \right)
-$$
+$$\frac{{\partial L\left( W\right)}}{{\partial W_{12}^{(o)}}} = \left( {\frac{{\partial L\left( W\right)}}{{\partial A_1^{(o)}}}} \right)\left( {\frac{{\partial A_1^{(o)}}}{{\partial Z _1^{(o)}}}} \right)\left( {\frac{{\partial Z _1^{(o)}}}{{\partial W_{12}^{(o)}}}} \right)$$
 
-$$
-\frac{{\partial L\left( W\right)}}{{\partial W_{21}^{(o)}}} = \left( {\frac{{\partial L\left( W\right)}}{{\partial A_2^{(o)}}}} \right)\left( {\frac{{\partial A_2^{(o)}}}{{\partial Z _2^{(o)}}}} \right)\left( {\frac{{\partial Z _2^{(o)}}}{{\partial W_{21}^{(o)}}}} \right)
-$$
+$$\frac{{\partial L\left( W\right)}}{{\partial W_{21}^{(o)}}} = \left( {\frac{{\partial L\left( W\right)}}{{\partial A_2^{(o)}}}} \right)\left( {\frac{{\partial A_2^{(o)}}}{{\partial Z _2^{(o)}}}} \right)\left( {\frac{{\partial Z _2^{(o)}}}{{\partial W_{21}^{(o)}}}} \right)$$
 
-$$
-\frac{{\partial L\left( W\right)}}{{\partial W_{22}^{(o)}}} = \left( {\frac{{\partial L\left( W\right)}}{{\partial A_2^{(o)}}}} \right)\left( {\frac{{\partial A_2^{(o)}}}{{\partial Z _2^{(o)}}}} \right)\left( {\frac{{\partial Z _2^{(o)}}}{{\partial W_{22}^{(o)}}}} \right)
-$$
+$$\frac{{\partial L\left( W\right)}}{{\partial W_{22}^{(o)}}} = \left( {\frac{{\partial L\left( W\right)}}{{\partial A_2^{(o)}}}} \right)\left( {\frac{{\partial A_2^{(o)}}}{{\partial Z _2^{(o)}}}} \right)\left( {\frac{{\partial Z _2^{(o)}}}{{\partial W_{22}^{(o)}}}} \right)$$
 
 
 ### Generalizing Backpropagation
@@ -1467,57 +1432,37 @@ Let's examine the partial derivatives above and make a few observations. We'll s
 
 **Layer 2/Output Layer Parameters**:
 
-$$
-\frac{{\partial L\left( W\right)}}{{\partial W_{11}^{(2)}}} = \left( {\frac{{\partial L\left( W\right)}}{{\partial A_1^{(2)}}}} \right)\left( {\frac{{\partial A_1^{(2)}}}{{\partial Z _1^{(2)}}}} \right)\left( {\frac{{\partial Z _1^{(2)}}}{{\partial W_{11}^{(2)}}}} \right)
-$$
+$$\frac{{\partial L\left( W\right)}}{{\partial W_{11}^{(2)}}} = \left( {\frac{{\partial L\left( W\right)}}{{\partial A_1^{(2)}}}} \right)\left( {\frac{{\partial A_1^{(2)}}}{{\partial Z _1^{(2)}}}} \right)\left( {\frac{{\partial Z _1^{(2)}}}{{\partial W_{11}^{(2)}}}} \right)$$
 
-$$
-\frac{{\partial L\left( W\right)}}{{\partial W_{12}^{(2)}}} = \left( {\frac{{\partial L\left( W\right)}}{{\partial A_1^{(2)}}}} \right)\left( {\frac{{\partial A_1^{(2)}}}{{\partial Z _1^{(2)}}}} \right)\left( {\frac{{\partial Z _1^{(2)}}}{{\partial W_{12}^{(2)}}}} \right)
-$$
+$$\frac{{\partial L\left( W\right)}}{{\partial W_{12}^{(2)}}} = \left( {\frac{{\partial L\left( W\right)}}{{\partial A_1^{(2)}}}} \right)\left( {\frac{{\partial A_1^{(2)}}}{{\partial Z _1^{(2)}}}} \right)\left( {\frac{{\partial Z _1^{(2)}}}{{\partial W_{12}^{(2)}}}} \right)$$
 
-$$
-\frac{{\partial L\left( W\right)}}{{\partial W_{21}^{(2)}}} = \left( {\frac{{\partial L\left( W\right)}}{{\partial A_2^{(2)}}}} \right)\left( {\frac{{\partial A_2^{(2)}}}{{\partial Z _2^{(2)}}}} \right)\left( {\frac{{\partial Z _2^{(2)}}}{{\partial W_{21}^{(2)}}}} \right)
-$$
+$$\frac{{\partial L\left( W\right)}}{{\partial W_{21}^{(2)}}} = \left( {\frac{{\partial L\left( W\right)}}{{\partial A_2^{(2)}}}} \right)\left( {\frac{{\partial A_2^{(2)}}}{{\partial Z _2^{(2)}}}} \right)\left( {\frac{{\partial Z _2^{(2)}}}{{\partial W_{21}^{(2)}}}} \right)$$
 
-$$
-\frac{{\partial L\left( W\right)}}{{\partial W_{22}^{(2)}}} = \left( {\frac{{\partial L\left( W\right)}}{{\partial A_2^{(2)}}}} \right)\left( {\frac{{\partial A_2^{(2)}}}{{\partial Z _2^{(2)}}}} \right)\left( {\frac{{\partial Z _2^{(2)}}}{{\partial W_{22}^{(2)}}}} \right)
-$$
+$$\frac{{\partial L\left( W\right)}}{{\partial W_{22}^{(2)}}} = \left( {\frac{{\partial L\left( W\right)}}{{\partial A_2^{(2)}}}} \right)\left( {\frac{{\partial A_2^{(2)}}}{{\partial Z _2^{(2)}}}} \right)\left( {\frac{{\partial Z _2^{(2)}}}{{\partial W_{22}^{(2)}}}} \right)$$
 
 Foremost, it seems as if the columns contain very similar values. For example, **The first and second columns can be combined as** $ \delta \_i^{(2)}$ for the sake of convenience later on down the road. People will often refer to this expression as the **"error"** term which we use to _"send back error from the output throughout the network"_. We'll see why this is the case soon. Each neuron in the network will have a corresponding $ \delta_i^{(2)}$ term that we'll solve for.
 
-$$
- \delta _i^{(2)} =\left( {\frac{{\partial L\left( W\right)}}{{\partial A_i^{(2)}}}} \right)\left( {\frac{{\partial A_i^{(2)}}}{{\partial Z _i^{(2)}}}} \right)= \frac{1}{m}\left( {{y _i} - A _i^{(2)}} \right)\sigma'\left( {{A^{(2)}}} \right)
-$$
+$$\delta _i^{(2)} =\left( {\frac{{\partial L\left( W\right)}}{{\partial A_i^{(2)}}}} \right)\left( {\frac{{\partial A_i^{(2)}}}{{\partial Z _i^{(2)}}}} \right)= \frac{1}{m}\left( {{y _i} - A _i^{(2)}} \right)\sigma'\left( {{A^{(2)}}} \right)$$
 
 We know $\sigma'\left( {{A^{(2)}}} \right)$ or the derivative of the sigmoid activation function is given by $\sigma'\left( {{A^{(2)}}} \right) =  A_2 * (1 - A_2)$
 
 The **third column** represents how the parameter of interest changes with respect to the weighted inputs for the current layer; when you calculate the derivative this corresponds with the activation from the previous layer.
 
 
-$$
-\frac{{\partial L\left( W\right)}}{{\partial W_{12}^{(2)}}} = \delta _1^{(2)}\left( {\frac{{\partial Z _1^{(2)}}}{{\partial W_{12}^{(2)}}}} \right) = \delta _1^{(2)}\cdot A_{1}^{(1)}
-$$
+$$\frac{{\partial L\left( W\right)}}{{\partial W_{12}^{(2)}}} = \delta _1^{(2)}\left( {\frac{{\partial Z _1^{(2)}}}{{\partial W_{12}^{(2)}}}} \right) = \delta _1^{(2)}\cdot A_{1}^{(1)}$$
 
-$$
-\frac{{\partial L\left( W\right)}}{{\partial W_{12}^{(2)}}} = \delta _1^{(2)}\left( {\frac{{\partial Z _1^{(2)}}}{{\partial W_{12}^{(2)}}}} \right) = \delta _1^{(2)}\cdot A_{2}^{(1)}
-$$
+$$\frac{{\partial L\left( W\right)}}{{\partial W_{12}^{(2)}}} = \delta _1^{(2)}\left( {\frac{{\partial Z _1^{(2)}}}{{\partial W_{12}^{(2)}}}} \right) = \delta _1^{(2)}\cdot A_{2}^{(1)}$$
 
-$$
-\frac{{\partial L\left( W\right)}}{{\partial W_{21}^{(2)}}} =\delta _2^{(2)}\left( {\frac{{\partial Z _2^{(2)}}}{{\partial W_{21}^{(2)}}}} \right) = \delta _2^{(2)}\cdot A_{1}^{(1)}
-$$
+$$\frac{{\partial L\left( W\right)}}{{\partial W_{21}^{(2)}}} =\delta _2^{(2)}\left( {\frac{{\partial Z _2^{(2)}}}{{\partial W_{21}^{(2)}}}} \right) = \delta _2^{(2)}\cdot A_{1}^{(1)}$$
 
-$$
-\frac{{\partial L\left( W\right)}}{{\partial W_{22}^{(2)}}} = \delta _2^{(2)}\left( {\frac{{\partial Z _2^{(2)}}}{{\partial W_{22}^{(2)}}}} \right) = \delta _2^{(2)}\cdot A_{2}^{(1)}
-$$
+$$\frac{{\partial L\left( W\right)}}{{\partial W_{22}^{(2)}}} = \delta _2^{(2)}\left( {\frac{{\partial Z _2^{(2)}}}{{\partial W_{22}^{(2)}}}} \right) = \delta _2^{(2)}\cdot A_{2}^{(1)}$$
 
 
 It appears that we're **combining the `"error"` terms with `activations` from the previous layer ( ${\frac{{\partial Z^{(2)}}}{{\partial W^{(2)}}}}= A^{(1)}$) to calculate each partial derivative**
 
 It's also interesting to note that the indices $j$ and $k$ for $W_{jk}$ match the combined indices of $\delta,A$
 
-$$
-\frac{{\partial L\left( W\right)}}{{\partial W_{jk}^{(2)}}} =  \delta _j^{(2)}\cdot A_{k}^{(1)}
-$$
+$$\frac{{\partial L\left( W\right)}}{{\partial W_{jk}^{(2)}}} =  \delta _j^{(2)}\cdot A_{k}^{(1)}$$
 
 Let's see if we can figure out a matrix operation to compute all of the partial derivatives in one expression.
 
@@ -1529,9 +1474,7 @@ $$
 
 Or
 
-$$
-\frac{{\partial L\left( W\right)}}{{\partial W_{jk}^{(l)}}} =  \delta _j^{(l)}\cdot A_{k}^{(l-1)}
-$$
+$$\frac{{\partial L\left( W\right)}}{{\partial W_{jk}^{(l)}}} =  \delta _j^{(l)}\cdot A_{k}^{(l-1)}$$
 
 To summarize, see the graphic below.
 
@@ -1560,15 +1503,11 @@ The **third column** corresponds with some parameter that connects layer 1 to la
 
 We'll also redefine $\delta$ for all layers excluding the output layer to include this combination of weighted errors.
 
-$$
-\delta _j^{(l)} =\left( \sum\limits _{i = 1}^n {\delta _i^{(l + 1)}W_{ij}^{(l+1)}}\right) \cdot \sigma'\left({{a^{(l)}}} \right)
-$$
+$$\delta _j^{(l)} =\left( \sum\limits _{i = 1}^n {\delta _i^{(l + 1)}W_{ij}^{(l+1)}}\right) \cdot \sigma'\left({{a^{(l)}}} \right)$$
 
 We could write this more succinctly using matrix expressions.
 
-$$
-{\delta ^{(l)}} = {\delta ^{(l + 1)}}\cdot{W ^{(l+1)}}\cdot\sigma'\left( {{A^{(l)}}} \right)
-$$
+$${\delta ^{(l)}} = {\delta ^{(l + 1)}}\cdot{W ^{(l+1)}}\cdot\sigma'\left( {{A^{(l)}}} \right)$$
 
 The **fourth column** represents the derivative of the activation function used in the current layer. Remember that for each layer, neurons will use the same activation function.
 
@@ -1581,41 +1520,31 @@ Let's take a closer look at one of the terms $\frac{{\partial L\left( W  \right)
 Foremost, we established that the first two columns of each derivative chains were previously calculated as $\delta_{j}^{(2)}$. Further, we established the the third columns of each derivative chain was a parameter that acted to weight each of the respective $\delta$ terms. We also established that the fourth column was the derivative of the activation function.
 
 
-$$
-\frac{{\partial L\left( W  \right)}}{{\partial W _{11}^{(1)}}} = \delta_1^{(2)} \cdot{W_{11} ^{(2)}}\cdot\sigma'\left( {{A^{(1)}}} \right) \left( {\frac{{\partial Z _1^{(1)}}}{{\partial W _{11}^{(1)}}}} \right) + \delta_2^{(2)} \cdot{W_{21} ^{(2)}}\cdot\sigma'\left( {{A^{(1)}}} \right) \left( {\frac{{\partial Z _1^{(1)}}}{{\partial W _{11}^{(1)}}}} \right)
-$$
+$$\frac{{\partial L\left( W  \right)}}{{\partial W _{11}^{(1)}}} = \delta_1^{(2)} \cdot{W_{11} ^{(2)}}\cdot\sigma'\left( {{A^{(1)}}} \right) \left( {\frac{{\partial Z _1^{(1)}}}{{\partial W _{11}^{(1)}}}} \right) + \delta_2^{(2)} \cdot{W_{21} ^{(2)}}\cdot\sigma'\left( {{A^{(1)}}} \right) \left( {\frac{{\partial Z _1^{(1)}}}{{\partial W _{11}^{(1)}}}} \right)$$
 
 
 Factoring out $\left( {\frac{{\partial Z _1^{(1)}}}{{\partial W _{11}^{(1)}}}} \right)$,
 
-$$
-\frac{{\partial L\left( W  \right)}}{{\partial W _{11}^{(1)}}} = \left( {\frac{{\partial Z _1^{(1)}}}{{\partial W _{11}^{(1)}}}} \right)   \left( \delta_1^{(2)} \cdot{W_{11} ^{(2)}}\cdot\sigma'\left( {{A^{(1)}}} \right)+ \delta_2^{(2)} \cdot{W_{21} ^{(2)}}\cdot\sigma'\left( {{A^{(1)}}} \right) \right)
-$$
+$$\frac{{\partial L\left( W  \right)}}{{\partial W _{11}^{(1)}}} = \left( {\frac{{\partial Z _1^{(1)}}}{{\partial W _{11}^{(1)}}}} \right)   \left( \delta_1^{(2)} \cdot{W_{11} ^{(2)}}\cdot\sigma'\left( {{A^{(1)}}} \right)+ \delta_2^{(2)} \cdot{W_{21} ^{(2)}}\cdot\sigma'\left( {{A^{(1)}}} \right) \right)$$
 
 
 Substituting with $\delta_{j}^{l}$,
 
 
-$$
-\frac{{\partial L\left( W  \right)}}{{\partial W _{11}^{(1)}}} = \left( {\frac{{\partial Z _1^{(1)}}}{{\partial W _{11}^{(1)}}}} \right) \left( \delta_{1}^{(1)}\right)
-$$
+$$\frac{{\partial L\left( W  \right)}}{{\partial W _{11}^{(1)}}} = \left( {\frac{{\partial Z _1^{(1)}}}{{\partial W _{11}^{(1)}}}} \right) \left( \delta_{1}^{(1)}\right)$$
 
 
 Lastly, we established the **fifth column** $\left( {\frac{{\partial Z _1^{(1)}}}{{\partial W _{11}^{(1)}}}} \right)$ corresponded with an input from the previous layer. In this case, the derivative calculates to be
 $x_1$.
 
 
-$$
-\frac{{\partial L\left( W  \right)}}{{\partial W _{11}^{(1)}}} = x_1 \delta_{1}^{(1)}
-$$
+$$\frac{{\partial L\left( W  \right)}}{{\partial W _{11}^{(1)}}} = x_1 \delta_{1}^{(1)}$$
 
 
 Generally, we established that you can calculate the partial derivatives for layer $l$ by combining error - $\delta$ terms with the activations of the current layer.
 
 
-$$
-\frac{{\partial L\left( W  \right)}}{{\partial W^{(l)}}} = \left( \delta^{(l)}\right)^{T}A^{l}
-$$
+$$\frac{{\partial L\left( W  \right)}}{{\partial W^{(l)}}} = \left( \delta^{(l)}\right)^{T}A^{l}$$
 
 
 A formalized method for implementing backpropagation: Here, I'll present a practical method for implementing backpropagation through a network of layers $l=1,2,3....L$
@@ -1624,26 +1553,18 @@ A formalized method for implementing backpropagation: Here, I'll present a pract
 1. Perform forward propagation.
 2. Compute the $\delta$ term for the output layer.
 
-$$
- \delta _i^{(L)} = \frac{1}{m}\left( {{y _i} - A _i^{(L)}} \right)\sigma'\left( {{A^{(L)}}} \right)
-$$
+$$\delta _i^{(L)} = \frac{1}{m}\left( {{y _i} - A _i^{(L)}} \right)\sigma'\left( {{A^{(L)}}} \right)$$
 
 3. Compute the partial derivatives of the cost function with respect to all of the parameters that feed into the output layer, $W^{(L)}$
-   $$
-   \frac{{\partial L\left( W  \right)}}{{\partial W^{(L)}}} = \left( \delta^{(L)}\right)^{T}A^{L}
-   $$
+   $$\frac{{\partial L\left( W  \right)}}{{\partial W^{(L)}}} = \left( \delta^{(L)}\right)^{T}A^{L}$$
 4. **Update Weights and Biases for the output layer:**
    - $W^{(L)} = W^{(L)} - \alpha \frac{\partial L(W)}{\partial W^{(L)}}$,
    - $b^{(L)} = b^{(L)} - \alpha \frac{1}{m} \sum_{i=1}^{m} \delta_i^{(L)}$.
 5. Go back one layer. $l=l-1$
 6. Compute the $\delta$ term for the hidden.
-   $$
-   {\delta ^{(l)}} = {\delta ^{(l + 1)}}\cdot{W ^{(l+1)}}\cdot\sigma'\left( {{A^{(l)}}} \right)
-   $$
+   $${\delta ^{(l)}} = {\delta ^{(l + 1)}}\cdot{W ^{(l+1)}}\cdot\sigma'\left( {{A^{(l)}}} \right)$$
 7. Compute the partial derivatives of the cost function with respect to all of the parameters that feed into the current layer.
-   $$
-   \frac{{\partial L\left( W  \right)}}{{\partial W^{(l)}}} = \left( \delta^{(l)}\right)^{T}A^{l}
-   $$
+   $$\frac{{\partial L\left( W  \right)}}{{\partial W^{(l)}}} = \left( \delta^{(l)}\right)^{T}A^{l}$$
 8. **Update Weights and Biases:**
    - $W^{(l)} = W^{(l)} - \alpha \frac{\partial L(W)}{\partial W^{(l)}}$,
    - $b^{(l)} = b^{(l)} - \alpha \frac{1}{m} \sum_{i=1}^{m} \delta_i^{(l)}$.
@@ -1755,7 +1676,6 @@ plt.ylabel("Mean squared error")
 plt.xlabel("Epoch")
 # plt.savefig('figures/11_07.png', dpi=300)
 plt.show()
-
 ```
 
     Epoch: 001/050 | Train MSE: 0.30 | Train Acc: 49.00% | Valid Acc: 51.00%
@@ -1956,7 +1876,6 @@ plt.plot(range(len(epoch_losses)), epoch_losses)
 plt.ylabel("Loss")
 plt.xlabel("Epoch")
 plt.show()
-
 ```
 
     Epoch [1/50], Loss: 0.6361538171768188
@@ -2254,7 +2173,6 @@ history = train(
     y_valid=y_test,
     log_epochs=log_epochs,
 )
-
 ```
 
     Epoch [1/200], Loss: 0.6914540529251099
@@ -2384,7 +2302,7 @@ torch.save(model.state_dict(), path)
 
 
 ```python
-model_new = Model(input_size, hidden_size, output_size)
+model_new = Model(input_feature, n_hidden, output_feature)
 model_new.load_state_dict(torch.load(path))
 ```
 
