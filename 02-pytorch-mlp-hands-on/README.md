@@ -1,9 +1,6 @@
-<a href="https://colab.research.google.com/github/dev-SR/Deep-Learning/blob/main/02-FFN-pytorch/ffn.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+# Building FeedForward Networks with `Pytorch`
 
-
-# Building Feed Forward Networks with `Pytorch`
-
-- [Building Feed Forward Networks with `Pytorch`](#building-feed-forward-networks-with-pytorch)
+- [Building FeedForward Networks with `Pytorch`](#building-feedforward-networks-with-pytorch)
   - [Init](#init)
   - [The formal definition of an artificial neuron](#the-formal-definition-of-an-artificial-neuron)
   - [The perceptron learning rule](#the-perceptron-learning-rule)
@@ -19,11 +16,22 @@
     - [Introduction to Basic BackPropagation](#introduction-to-basic-backpropagation)
     - [Full Back Propagation](#full-back-propagation)
     - [Generalizing Backpropagation](#generalizing-backpropagation)
-  - [Building an NN model in PyTorch](#building-an-nn-model-in-pytorch)
-    - [Rebuilding simple model, and exploring pytorch utils](#rebuilding-simple-model-and-exploring-pytorch-utils)
-  - [Building a multilayer perceptron for classification](#building-a-multilayer-perceptron-for-classification)
+  - [Re-Building MLP with PyTorch](#re-building-mlp-with-pytorch)
+    - [Into to Pytorch AutoGrad, LossFn](#into-to-pytorch-autograd-lossfn)
+    - [Intro to Pytorch Optimizers and training loop](#intro-to-pytorch-optimizers-and-training-loop)
+    - [Building Class-based Model with `nn.Module`](#building-class-based-model-with-nnmodule)
+      - [Optimizing Parameters with `nn.Parameter`](#optimizing-parameters-with-nnparameter)
+      - [`nn.Linear`](#nnlinear)
+    - [Complete train and validation loop](#complete-train-and-validation-loop)
   - [Saving and reloading the trained model](#saving-and-reloading-the-trained-model)
   - [Running in GPU](#running-in-gpu)
+
+**Deep feedforward networks**, also called **feedforward neural networks**, or multilayer perceptrons (MLPs), are the quintessential deep learning models.The goal of a feedforward network is to approximate some function
+$f*$. These models are called _feedforward_ because there are no _feedback_ connections. A general form of a deep feedforward network can be represented by:
+
+$$
+f(\textbf{x}) = f^{(n)}(f^{(n-1)}(\cdots(f^{(2)}(f^{(1)}(\textbf{x})))))
+$$
 
 
 ## Init
@@ -32,23 +40,24 @@
 
 ```python
 """
-cd .\02-FFN-pytorch\
+cd .\02-mlp-hands-on-[pytorch]
 jupyter nbconvert --to markdown ffn.ipynb --output README.md
 """
 import torch
-import torch.nn.functional as Fn
-import math
+import torch.nn as nn
+from torch.utils.data import DataLoader, TensorDataset
+
 import numpy as np
 import matplotlib.pyplot as plt
-import torch.nn as nn
-from torch import optim
 
 from helper import *
 import sys
 
 sys.path.append("..")  # Add the parent directory to the path
+
 from plot import plot_decision_regions
-from global_helpers import *
+from global_helpers import generate_blob_cluster  # noqa: F403
+
 ```
 
 ## The formal definition of an artificial neuron
@@ -245,7 +254,7 @@ X, y = generate_blob_cluster()
 
 
 
-![png](README_files/README_11_1.png)
+![png](README_files/README_12_1.png)
 
 
 
@@ -263,7 +272,7 @@ plt.show()
 ```
 
 
-![png](README_files/README_12_0.png)
+![png](README_files/README_13_0.png)
 
 
 As we can see in Figure above, our perceptron converged after certain epoch and should now be able
@@ -276,7 +285,7 @@ plot_decision_regions(X, y, classifier=ppn)
 ```
 
 
-![png](README_files/README_14_0.png)
+![png](README_files/README_15_0.png)
 
 
 Notice that the initial weight vector contains small random numbers drawn from a normal distribution
@@ -371,7 +380,7 @@ plot_gradient_one_var()
 ```
 
 
-![png](README_files/README_23_0.png)
+![png](README_files/README_24_0.png)
 
 
 As illustrated in the figure, geometrically, **the direction of the gradient indicates the direction in which the function increases most rapidly, while the magnitude of the gradient represents the steepness of the slope.**
@@ -405,7 +414,7 @@ plot_gradient_descent_one_var()
 ```
 
 
-![png](README_files/README_27_0.png)
+![png](README_files/README_28_0.png)
 
 
 <p align="center">
@@ -571,7 +580,7 @@ plt.show()
 ```
 
 
-![png](README_files/README_31_0.png)
+![png](README_files/README_32_0.png)
 
 
 we can see that the loss decreases on the right plot, but the chosen learning rate, `𝜂=0001` , is so small that the algorithm would require a very large number of epochs to converge to the global loss minimum
@@ -590,11 +599,11 @@ plt.show()
 ```
 
 
-![png](README_files/README_33_0.png)
+![png](README_files/README_34_0.png)
 
 
 
-![png](README_files/README_33_1.png)
+![png](README_files/README_34_1.png)
 
 
 #### Mini batch gradient descent
@@ -766,11 +775,11 @@ plt.show()
 ```
 
 
-![png](README_files/README_40_0.png)
+![png](README_files/README_41_0.png)
 
 
 
-![png](README_files/README_40_1.png)
+![png](README_files/README_41_1.png)
 
 
 If we want to update our model, for example, in an online learning scenario with streaming data, we could simply call the partial_fit method on individual training examples—for instance, `ada_sgd.partial_fit(X_new(i), y(i)).`
@@ -786,7 +795,7 @@ print(online_data_X.shape, online_data_y.shape)
 
 
 
-![png](README_files/README_42_1.png)
+![png](README_files/README_43_1.png)
 
 
     (1000, 2) (1000,)
@@ -1106,7 +1115,7 @@ X_train, X_test, y_train, y_test = generate_blob_cluster(split_train_test=True)
 
 
 
-![png](README_files/README_65_1.png)
+![png](README_files/README_66_1.png)
 
 
 
@@ -1360,6 +1369,7 @@ plt.ylabel("Mean squared error")
 plt.xlabel("Epoch")
 # plt.savefig('figures/11_07.png', dpi=300)
 plt.show()
+
 ```
 
     Epoch: 001/050 | Train MSE: 0.28 | Train Acc: 83.67% | Valid Acc: 85.33%
@@ -1370,7 +1380,7 @@ plt.show()
 
 
 
-![png](README_files/README_73_1.png)
+![png](README_files/README_74_1.png)
 
 
 
@@ -1385,7 +1395,7 @@ plt.show()
 ```
 
 
-![png](README_files/README_74_0.png)
+![png](README_files/README_75_0.png)
 
 
 
@@ -1745,6 +1755,7 @@ plt.ylabel("Mean squared error")
 plt.xlabel("Epoch")
 # plt.savefig('figures/11_07.png', dpi=300)
 plt.show()
+
 ```
 
     Epoch: 001/050 | Train MSE: 0.30 | Train Acc: 49.00% | Valid Acc: 51.00%
@@ -1755,10 +1766,10 @@ plt.show()
 
 
 
-![png](README_files/README_98_1.png)
+![png](README_files/README_99_1.png)
 
 
-## Building an NN model in PyTorch
+## Re-Building MLP with PyTorch
 
 
 The most commonly used approach for building an NN in PyTorch is through `nn.Module`, which allows
@@ -1768,27 +1779,30 @@ layers to be stacked to form a network. This gives control over both the forward
 
 ```python
 X_train, X_test, y_train, y_test = generate_blob_cluster(split_train_test=True)
+X_train, X_test, y_train, y_test = (
+    torch.tensor(X_train).float(),
+    torch.tensor(X_test).float(),
+    torch.tensor(y_train).float(),
+    torch.tensor(y_test).float(),
+)
 ```
 
     (1000, 2) (1000,)
 
 
 
-![png](README_files/README_101_1.png)
+![png](README_files/README_102_1.png)
 
 
 
 ```python
-import torch
-from torch.utils.data import DataLoader, TensorDataset
-
-train_ds = TensorDataset(torch.tensor(X_train).float(), torch.tensor(y_train).float())
-
-batch_size = 50
+train_ds = TensorDataset(X_train, y_train)
+batch_size = 20
+torch.manual_seed(1)
 train_dl = DataLoader(train_ds, batch_size, shuffle=True)
 ```
 
-### Rebuilding simple model, and exploring pytorch utils
+### Into to Pytorch AutoGrad, LossFn
 
 
 
@@ -1808,7 +1822,7 @@ def model(X):
     a1 = torch.matmul(X, W1.T) + b1  # (N,f) x (h1,f)^T => (N,h1)
     h1 = a1.sigmoid()  # (N,h1)
     a2 = torch.matmul(h1, W2.T) + b2  # (N,h1) x (h2,h1)^T => (N,h2)
-    h2 = a2.softmax(dim=1)  # (N,h2)
+    h2 = a2.sigmoid()  # (N,h2)
     return h2
 
 
@@ -1859,15 +1873,18 @@ plt.xlabel("Epoch")
 plt.show()
 ```
 
-    Epoch [1/50], Loss: 0.6990156173706055
-    Epoch [11/50], Loss: 0.37149864435195923
-    Epoch [21/50], Loss: 0.3909918963909149
-    Epoch [31/50], Loss: 0.3687649965286255
-    Epoch [41/50], Loss: 0.3724702000617981
+    Epoch [1/50], Loss: 0.6968660354614258
+    Epoch [11/50], Loss: 0.4909517168998718
+    Epoch [21/50], Loss: 0.44125431776046753
+    Epoch [31/50], Loss: 0.40942731499671936
+    Epoch [41/50], Loss: 0.39606401324272156
 
 
 
-![png](README_files/README_104_1.png)
+![png](README_files/README_105_1.png)
+
+
+### Intro to Pytorch Optimizers and training loop
 
 
 `torch.optim` provides a wide array of optimization algorithms, such as SGD, Adam, RMSprop, etc., to automatically update model parameters based on computed gradients during backpropagation.
@@ -1878,28 +1895,43 @@ Using `torch.optim` simplifies training as it handles the weight updates for you
 
 ```python
 torch.manual_seed(0)
+n_features = 2
+n_hidden_1 = 10
+n_classes = 2
+
+
 W1 = torch.randn(n_hidden_1, n_features, requires_grad=True)
 b1 = torch.zeros(n_hidden_1, requires_grad=True)
 W2 = torch.randn(n_classes, n_hidden_1, requires_grad=True)
 b2 = torch.zeros(n_classes, requires_grad=True)
 
-# updating through optimizer
-optimizer = optim.Adam([W1, b1, W2, b2], lr=0.1)
 
+def model(X):
+    a1 = torch.matmul(X, W1.T) + b1  # (N,f) x (h1,f)^T => (N,h1)
+    h1 = a1.sigmoid()  # (N,h1)
+    a2 = torch.matmul(h1, W2.T) + b2  # (N,h1) x (h2,h1)^T => (N,h2)
+    h2 = a2.sigmoid()  # (N,h2)
+    return h2
+
+
+loss_fn = nn.CrossEntropyLoss()
+# updating through optimizer
+optimizer = torch.optim.Adam([W1, b1, W2, b2], lr=0.015)
 
 epoch_losses = []
 for epoch in range(num_epochs):
-    for X_batch, y_batch in train_dl:
-        # Forward pass
-        outputs = model(X_batch)
-        # Calculate loss
-        loss = loss_fn(outputs, y_batch.long())
-        # Compute gradients
-        loss.backward()
-        # Update weights and biases
-        optimizer.step()
-        # Zero gradients for the next epoch
+    for batch in train_dl:
+        X, y = batch
+        # 1. Zero the gradients for a fresh start
         optimizer.zero_grad()
+        # 2. Forward pass
+        outputs = model(X)
+        # 3. Calculate loss
+        loss = loss_fn(outputs, y.long())
+        # 4. Compute gradients
+        loss.backward()
+        # 5. Update Parameters
+        optimizer.step()
 
         # with torch.no_grad():
         #     W1 -= learning_rate * W1.grad
@@ -1916,6 +1948,7 @@ for epoch in range(num_epochs):
     epoch_losses.append(loss.item())
 
     # Logging
+
     if epoch % log_epochs == 0:
         print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item()}")
 
@@ -1923,52 +1956,117 @@ plt.plot(range(len(epoch_losses)), epoch_losses)
 plt.ylabel("Loss")
 plt.xlabel("Epoch")
 plt.show()
+
 ```
 
-    Epoch [1/50], Loss: 0.7872458696365356
-    Epoch [11/50], Loss: 0.313730388879776
-    Epoch [21/50], Loss: 0.36338865756988525
-    Epoch [31/50], Loss: 0.31764933466911316
-    Epoch [41/50], Loss: 0.3633410334587097
+    Epoch [1/50], Loss: 0.6361538171768188
+    Epoch [11/50], Loss: 0.3223415017127991
+    Epoch [21/50], Loss: 0.3679538667201996
+    Epoch [31/50], Loss: 0.3408721387386322
+    Epoch [41/50], Loss: 0.36326706409454346
 
 
 
-![png](README_files/README_106_1.png)
+![png](README_files/README_108_1.png)
 
 
-Building class based model with `nn.Module`
+For the **`training loop`**, we'll build the following steps:
+
+<table>
+<thead>
+  <tr>
+    <th>Step Names</th>
+    <th>Code example</th>
+    <th>What does it do?</th>
+  </tr>
+</thead>
+<tbody>
+ <tr>
+    <td><b>Zero gradients</b></td>
+    <td><code>optimizer.zero_grad()</code></td>
+    <td>The optimizers gradients are set to zero (they are accumulated by default) so they can be recalculated for the specific training step.</td>
+  </tr>
+  <tr>
+    <td><b> Forward pass</b></td>
+    <td><code>model(x_train)</code></td>
+    <td>The model goes through all of the training data once, performing its forward() function calculations.</td>
+  </tr>
+  <tr>
+    <td><b>Calculate the loss</b></td>
+    <td><code>loss = loss_fn(y_pred, y_train)</code></td>
+    <td>The model's outputs (predictions) are compared to the ground truth and evaluated to see how wrong they are.</td>
+  </tr>
+
+  <tr>
+    <td><b>Perform backpropagation on the loss</b></td>
+    <td><code>loss.backward()</code></td>
+    <td>Computes the gradient of the loss with respect for every model parameter to be updated (each parameter with <code>requires_grad=True</code>). This is known as backpropagation, hence "backwards".</td>
+  </tr>
+  <tr>
+    <td><b>Update the optimizer (gradient descent)</b></td>
+    <td><code>optimizer.step()</code></td>
+    <td>Update the parameters with requires_grad=True with respect to the loss gradients in order to improve them.</td>
+  </tr>
+</tbody>
+</table>
+
+<div align="center">
+<img src="img/01-pytorch-training-loop-annotated.png" alt="train" width="1000px">
+</div>
+
+**_And on the ordering of things, the above is a good default order but you may see slightly different orders_**. Some rules of thumb:
+
+- **Calculate the loss** (`loss = ...`) **before performing backpropagation** on it (`loss. backward()`).
+- **Zero gradients** (`optimizer.zero_grad()`) **before stepping them** (`optimizer.step()`).
+- **Step the optimizer** (`optimizer.step()`) **after performing backpropagation on the loss** (`loss.backward()`).
+
+
+### Building Class-based Model with `nn.Module`
+
+
+By subclassing `nn.Module`, we create a new class derived from nn.Module and define the method, `__init__()`, as a constructor. The `forward()` method is used to specify the forward pass. In the constructor function, `__init__()`, we define the layers as attributes of the class so that they can be accessed via the self reference attribute. Then, in the `forward()` method, we specify how these layers are to be used in the forward pass of the NN.
+
+
+#### Optimizing Parameters with `nn.Parameter`
+
+
+`nn.Parameter` in PyTorch is a class used to **explicitly mark parameters to be optimized during training**, negating the need to manually specify parameters (e.g., `Adam([W1, b1, W2, b2], lr=0.1)`). Instead, parameters defined within the model can be accessed through `Adam(model.parameters(), lr=0.01)`.
 
 
 
 ```python
-class FirstNetwork(nn.Module):
-    def __init__(self):
+class Model(nn.Module):
+    def __init__(self, input_features=2, n_hidden=10, output_features=2):
         super().__init__()
         torch.manual_seed(0)
-        self.W1 = nn.Parameter(torch.randn(n_hidden_1, n_features))
-        self.b1 = nn.Parameter(torch.zeros(n_hidden_1))
-        self.W2 = nn.Parameter(torch.randn(n_classes, n_hidden_1))
-        self.b2 = nn.Parameter(torch.zeros(n_classes))
+        # self.W1 = torch.randn(n_hidden_1, n_features, requires_grad=True)
+        # self.b1 = torch.zeros(n_hidden_1, requires_grad=True)
+        # self.W2 = torch.randn(n_classes, n_hidden_1, requires_grad=True)
+        # self.b2 = torch.zeros(n_classes, requires_grad=True)
+        self.W1 = nn.Parameter(torch.randn(n_hidden, input_features))
+        self.b1 = nn.Parameter(torch.zeros(n_hidden))
+        self.W2 = nn.Parameter(torch.randn(output_features, n_hidden))
+        self.b2 = nn.Parameter(torch.zeros(output_features))
 
     def forward(self, X):
-        a1 = torch.matmul(X, self.W1.T) + b1
+        a1 = torch.matmul(X, self.W1.T) + self.b1
         h1 = a1.sigmoid()
-        a2 = torch.matmul(h1, self.W2.T) + b2
-        h2 = a2.softmax(dim=1)
-
+        a2 = torch.matmul(h1, self.W2.T) + self.b2
+        h2 = a2.sigmoid()
         return h2
 
 
-model = FirstNetwork()
-
-# no need to define `Adam([W1, b1, W2, b2], lr=0.1)` as parameters are already defined in the model
-# and can be accessed through `model.parameters()`
-optimizer = optim.Adam(model.parameters(), lr=0.1)
+model = Model()
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+loss_fn = nn.CrossEntropyLoss()
 ```
 
 
 ```python
 epoch_losses = []
+num_epochs = 50
+log_epochs = 39
+
 for epoch in range(num_epochs):
     for X_batch, y_batch in train_dl:
         # Forward pass
@@ -1976,6 +2074,7 @@ for epoch in range(num_epochs):
         # Calculate loss
         loss = loss_fn(outputs, y_batch.long())
         # Compute gradients
+
         loss.backward()
         # Update weights and biases
         optimizer.step()
@@ -1993,18 +2092,15 @@ plt.xlabel("Epoch")
 plt.show()
 ```
 
-    Epoch [1/50], Loss: 0.6421765685081482
-    Epoch [11/50], Loss: 0.3133297562599182
-    Epoch [21/50], Loss: 0.3632497191429138
-    Epoch [31/50], Loss: 0.32193225622177124
-    Epoch [41/50], Loss: 0.363283634185791
+    Epoch [1/50], Loss: 0.7436052560806274
+    Epoch [40/50], Loss: 0.3408917784690857
 
 
 
-![png](README_files/README_109_1.png)
+![png](README_files/README_115_1.png)
 
 
-## Building a multilayer perceptron for classification
+#### `nn.Linear`
 
 
 For this problem, we are going to use the `Linear` layer, which is also known as a fully connected layer or dense layer, and can be best represented by `f(w×x+b)`, where `x` represents a tensor containing the input features, `w` and `b` are the weight matrix and the bias vector, and `f` is the activation function.
@@ -2023,10 +2119,10 @@ class Model(nn.Module):
     def __init__(self, input_features=2, n_hidden=10, output_features=2):
         super().__init__()
         torch.manual_seed(0)
-        # self.W1 = nn.Parameter(torch.randn(n_hidden_1, n_features))
-        # self.b1 = nn.Parameter(torch.zeros(n_hidden_1))
-        # self.W2 = nn.Parameter(torch.randn(n_classes, n_hidden_1))
-        # self.b2 = nn.Parameter(torch.zeros(n_classes))
+        # self.W1 = nn.Parameter(torch.randn(n_hidden, input_features))
+        # self.b1 = nn.Parameter(torch.zeros(n_hidden))
+        # self.W2 = nn.Parameter(torch.randn(output_features, n_hidden))
+        # self.b2 = nn.Parameter(torch.zeros(output_features))
 
         self.layer1 = nn.Linear(input_features, n_hidden)
         self.layer2 = nn.Linear(n_hidden, output_features)
@@ -2039,7 +2135,7 @@ class Model(nn.Module):
         x = self.layer1(x)
         x = nn.Sigmoid()(x)
         x = self.layer2(x)
-        x = nn.Softmax(dim=1)(x)
+        x = nn.Sigmoid()(x)
         return x
 
 
@@ -2048,6 +2144,8 @@ n_hidden = 16
 output_feature = 2
 
 model = Model(input_feature, n_hidden, output_feature)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+loss_fn = nn.CrossEntropyLoss()
 ```
 
 
@@ -2058,11 +2156,11 @@ accuracy_hist = [0] * num_epochs
 
 for epoch in range(num_epochs):
     for x_batch, y_batch in train_dl:
+        optimizer.zero_grad()
         pred = model(x_batch)
         loss = loss_fn(pred, y_batch.long())
         loss.backward()
         optimizer.step()
-        optimizer.zero_grad()
 
         loss_hist[epoch] += loss.item() * y_batch.size(0)
         is_correct = (torch.argmax(pred, dim=1) == y_batch).float()
@@ -2094,13 +2192,138 @@ plt.show()
 ```
 
 
-![png](README_files/README_114_0.png)
+![png](README_files/README_120_0.png)
+
+
+### Complete train and validation loop
 
 
 
 ```python
-X_test = torch.from_numpy(X_test).float()
-y_test = torch.from_numpy(y_test)
+def train(model, num_epochs, train_dl, x_valid, y_valid, log_epochs=10):
+    loss_hist_train = [0] * num_epochs
+    accuracy_hist_train = [0] * num_epochs
+    loss_hist_valid = [0] * num_epochs
+    accuracy_hist_valid = [0] * num_epochs
+
+    for epoch in range(num_epochs):
+        for x_batch, y_batch in train_dl:
+            optimizer.zero_grad()
+            pred = model(x_batch)
+            loss = loss_fn(pred, y_batch.long())
+            loss.backward()
+            optimizer.step()
+            loss_hist_train[epoch] += loss.item()
+            is_correct = (torch.argmax(pred, axis=1) == y_batch).float()
+            accuracy_hist_train[epoch] += is_correct.mean()
+
+        loss_hist_train[epoch] /= len(train_dl.dataset) / batch_size
+        accuracy_hist_train[epoch] /= len(train_dl.dataset) / batch_size
+        #### Validation Starts ####
+        # put model in evaluation model
+        model.eval()
+        # turn on inference mode
+        with torch.inference_mode():
+            pred = model(x_valid)
+            loss = loss_fn(pred, y_valid.long())
+            loss_hist_valid[epoch] = loss.item()
+            is_correct = (torch.argmax(pred, axis=1) == y_valid).float()
+            accuracy_hist_valid[epoch] += is_correct.mean()
+            # Logging
+            if epoch % log_epochs == 0:
+                print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item()}")
+    return {
+        "loss_train": loss_hist_train,
+        "loss_valid": loss_hist_valid,
+        "accuracy_train": accuracy_hist_train,
+        "accuracy_valid": accuracy_hist_valid,
+    }
+
+
+torch.manual_seed(1)
+num_epochs = 200
+log_epochs = 39
+model = Model(input_feature, n_hidden, output_feature)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+loss_fn = nn.CrossEntropyLoss()
+history = train(
+    model,
+    num_epochs=num_epochs,
+    train_dl=train_dl,
+    x_valid=X_test,
+    y_valid=y_test,
+    log_epochs=log_epochs,
+)
+
+```
+
+    Epoch [1/200], Loss: 0.6914540529251099
+    Epoch [40/200], Loss: 0.34239593148231506
+    Epoch [79/200], Loss: 0.33487212657928467
+    Epoch [118/200], Loss: 0.3322422504425049
+    Epoch [157/200], Loss: 0.33055779337882996
+    Epoch [196/200], Loss: 0.3301910161972046
+
+
+
+```python
+fig = plt.figure(figsize=(16, 6))
+ax = fig.add_subplot(1, 2, 1)
+ax.plot(history["loss_train"], lw=4)
+ax.plot(history["loss_valid"], lw=4)
+ax.legend(["Train loss", "Validation loss"], fontsize=15)
+ax.set_xlabel("Epochs", size=15)
+
+ax = fig.add_subplot(1, 2, 2)
+ax.plot(history["accuracy_train"], lw=4)
+ax.plot(history["accuracy_valid"], lw=4)
+ax.legend(["Train acc.", "Validation acc."], fontsize=15)
+ax.set_xlabel("Epochs", size=15)
+plt.show()
+```
+
+
+![png](README_files/README_123_0.png)
+
+
+As for the **`testing loop`** (evaluating our model), the typical steps include:
+
+<table>
+<thead>
+  <tr>
+    <th>Step Names</th>
+    <th>What does it do?</th>
+    <th>Code example</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td><b> Forward pass</b></td>
+    <td>The model goes through all of the testing data once, performing its forward() function calculations.</td>
+    <td><code>model(x_test)</code></td>
+  </tr>
+  <tr>
+    <td><b>Calculate the loss</b></td>
+    <td>The model's outputs (predictions) are compared to the ground truth and evaluated to see how wrong they are.</td>
+    <td><code>loss = loss_fn(y_pred, y_test)</code></td>
+  </tr>
+  <tr>
+    <td><b>Calulate evaluation metrics (optional)</b></td>
+    <td>Alongisde the loss value you may want to calculate other evaluation metrics such as accuracy on the test set.</td>
+    <td>Custom functions</td>
+  </tr>
+</tbody>
+</table>
+
+Notice the testing loop doesn't contain performing backpropagation (`loss.backward()`) or stepping the optimizer (`optimizer.step()`), this is because no parameters in the model are being changed during testing, they've already been calculated. For testing, we're only interested in the output of the forward pass through the model.
+
+<div align="center">
+<img src="img/01-pytorch-testing-loop-annotated.png" alt="train" width="1000px">
+</div>
+
+
+
+```python
 pred_test = model(X_test)
 
 correct = (torch.argmax(pred_test, dim=1) == y_test).float()
