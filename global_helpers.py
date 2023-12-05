@@ -58,7 +58,7 @@ def generate_xor_data(samples=1000, split_train_test=False, seed=1):
     y = np.ones(samples)
     y[x[:, 0] * x[:, 1] < 0] = 0
 
-    fig = plt.figure(figsize=(6, 6))
+    plt.figure(figsize=(6, 6))
     plt.plot(x[y == 0, 0], x[y == 0, 1], "o", alpha=0.75, markersize=10)
     plt.plot(x[y == 1, 0], x[y == 1, 1], "<", alpha=0.75, markersize=10)
     plt.xlabel(r"$x_1$", size=15)
